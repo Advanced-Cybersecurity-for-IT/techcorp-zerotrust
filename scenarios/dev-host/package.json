@@ -1,0 +1,10 @@
+{
+  "name": "techcorp-scenario",
+  "version": "1.0.0",
+  "main": "web-server.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "cookie-parser": "^1.4.6"
+  }
+}

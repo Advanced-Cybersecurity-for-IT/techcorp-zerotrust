@@ -1,0 +1,37 @@
+# ============================================================================
+# TechCorp Zero Trust - Custom Snort Rules
+# ============================================================================
+# Formato: alert <protocol> <src_ip> <src_port> -> <dst_ip> <dst_port> (options)
+# ============================================================================
+
+# SQL Injection Rules
+alert tcp any any -> any any (msg:"SQL Injection - UNION SELECT"; content:"union"; nocase; content:"select"; nocase; sid:1000001; rev:1;)
+alert tcp any any -> any any (msg:"SQL Injection - OR 1=1"; content:"or"; nocase; pcre:"/or\s+[\'\"]?\d+[\'\"]?\s*=\s*[\'\"]?\d+/i"; sid:1000002; rev:1;)
+alert tcp any any -> any any (msg:"SQL Injection - Comment"; content:"--"; sid:1000003; rev:1;)
+
+# XSS Rules
+alert tcp any any -> any any (msg:"XSS - Script Tag"; content:"<script"; nocase; sid:1000010; rev:1;)
+alert tcp any any -> any any (msg:"XSS - Event Handler"; pcre:"/on(error|load|click|mouseover)\s*=/i"; sid:1000011; rev:1;)
+
+# Path Traversal Rules
+alert tcp any any -> any any (msg:"Path Traversal - Dot Dot Slash"; content:"../"; sid:1000020; rev:1;)
+alert tcp any any -> any any (msg:"Path Traversal - Encoded"; content:"%2e%2e"; nocase; sid:1000021; rev:1;)
+
+# Command Injection Rules
+alert tcp any any -> any any (msg:"Command Injection - Shell"; content:"|"; content:"sh"; distance:0; within:10; sid:1000030; rev:1;)
+alert tcp any any -> any any (msg:"Command Injection - Backtick"; content:"`"; sid:1000031; rev:1;)
+
+# Reconnaissance Rules
+alert tcp any any -> any any (msg:"Scanner - Nikto"; content:"Nikto"; nocase; sid:1000040; rev:1;)
+alert tcp any any -> any any (msg:"Scanner - SQLMap"; content:"sqlmap"; nocase; sid:1000041; rev:1;)
+alert tcp any any -> any any (msg:"Scanner - Nmap"; content:"Nmap"; nocase; sid:1000042; rev:1;)
+
+# Sensitive File Access
+alert tcp any any -> any any (msg:"Sensitive File - /etc/passwd"; content:"/etc/passwd"; sid:1000050; rev:1;)
+alert tcp any any -> any any (msg:"Sensitive File - /etc/shadow"; content:"/etc/shadow"; sid:1000051; rev:1;)
+alert tcp any any -> any any (msg:"Sensitive File - .htaccess"; content:".htaccess"; sid:1000052; rev:1;)
+
+# TechCorp Network Specific Rules
+alert tcp 172.28.1.200 any -> any any (msg:"BLOCKED IP - External Blocked Host"; sid:1000100; rev:1;)
+alert tcp 172.28.1.250 any -> any any (msg:"BLOCKED IP - Malicious Host"; sid:1000101; rev:1;)
+alert tcp 172.28.1.60 any -> any any (msg:"BLOCKED IP - Blocked Server"; sid:1000102; rev:1;)

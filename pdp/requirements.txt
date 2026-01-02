@@ -1,0 +1,5 @@
+flask==3.0.0
+requests==2.31.0
+splunk-sdk==1.7.4
+python-dateutil==2.8.2
+gunicorn==21.2.0

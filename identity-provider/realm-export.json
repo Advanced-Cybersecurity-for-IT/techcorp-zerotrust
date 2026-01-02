@@ -1,0 +1,319 @@
+{
+  "id": "techcorp",
+  "realm": "techcorp",
+  "displayName": "TechCorp Enterprise",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "defaultRole": {
+    "name": "default-roles-techcorp",
+    "composite": true
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "ceo",
+        "description": "Chief Executive Officer - Full Access",
+        "composite": false
+      },
+      {
+        "name": "cto",
+        "description": "Chief Technology Officer - Tech Admin",
+        "composite": false
+      },
+      {
+        "name": "hr_manager",
+        "description": "HR Manager - Employee Management",
+        "composite": false
+      },
+      {
+        "name": "sales_manager",
+        "description": "Sales Manager - Customer & Orders",
+        "composite": false
+      },
+      {
+        "name": "developer",
+        "description": "Software Developer - Projects Access",
+        "composite": false
+      },
+      {
+        "name": "analyst",
+        "description": "Data Analyst - Read Only",
+        "composite": false
+      },
+      {
+        "name": "default-roles-techcorp",
+        "description": "Default roles for TechCorp realm",
+        "composite": true,
+        "composites": {
+          "realm": [],
+          "client": {}
+        }
+      }
+    ],
+    "client": {
+      "techcorp-pep": []
+    }
+  },
+  "users": [
+    {
+      "username": "m.rossi",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Marco",
+      "lastName": "Rossi",
+      "email": "m.rossi@techcorp.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Ceo2024!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ceo", "default-roles-techcorp"],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "l.bianchi",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Laura",
+      "lastName": "Bianchi",
+      "email": "l.bianchi@techcorp.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Cto2024!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["cto", "developer", "default-roles-techcorp"],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "g.ferrari",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Giuseppe",
+      "lastName": "Ferrari",
+      "email": "g.ferrari@techcorp.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Hr2024!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["hr_manager", "default-roles-techcorp"],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "a.romano",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Anna",
+      "lastName": "Romano",
+      "email": "a.romano@techcorp.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Sales2024!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["sales_manager", "default-roles-techcorp"],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "f.colombo",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Francesco",
+      "lastName": "Colombo",
+      "email": "f.colombo@techcorp.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Dev2024!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["developer", "default-roles-techcorp"],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "s.ricci",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Sofia",
+      "lastName": "Ricci",
+      "email": "s.ricci@techcorp.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Analyst2024!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["analyst", "default-roles-techcorp"],
+      "clientRoles": {},
+      "groups": []
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "techcorp-pep",
+      "name": "TechCorp PEP Client",
+      "description": "Policy Enforcement Point Client",
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "techcorp-secret-2024",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "*",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "roles",
+      "description": "OpenID Connect scope for add user roles to the access token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${rolesScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "foo",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "audience resolve",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-resolve-mapper",
+          "consentRequired": false,
+          "config": {}
+        },
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "foo",
+            "access.token.claim": "true",
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "smtpServer": {},
+  "eventsEnabled": false,
+  "eventsListeners": ["jboss-logging"],
+  "enabledEventTypes": [],
+  "adminEventsEnabled": false,
+  "adminEventsDetailsEnabled": false,
+  "internationalizationEnabled": false,
+  "supportedLocales": [],
+  "browserFlow": "browser",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients",
+  "dockerAuthenticationFlow": "docker auth"
+}

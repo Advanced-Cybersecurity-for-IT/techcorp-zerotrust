@@ -1,0 +1,349 @@
+# ============================================================================
+# TechCorp Zero Trust Architecture
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # IPTABLES FIREWALL (Network Level) - Python Simulator
+  # ==========================================================================
+  iptables-firewall:
+    build: ./iptables-firewall
+    container_name: iptables-firewall
+    ports:
+      - "8888:8888"
+    networks:
+      internal_net:
+        ipv4_address: 172.28.2.2
+    restart: unless-stopped
+
+  # ==========================================================================
+  # SQUID PROXY (Application Level) - Python Simulator
+  # ==========================================================================
+  squid-proxy:
+    build: ./squid-proxy
+    container_name: squid-proxy
+    ports:
+      - "3128:3128"
+    networks:
+      dmz_net:
+        ipv4_address: 172.28.3.5
+      external_net:
+        ipv4_address: 172.28.1.5
+    restart: unless-stopped
+
+  # ==========================================================================
+  # SNORT IDS - Intrusion Detection System
+  # ==========================================================================
+  snort-ids:
+    build: ./snort-ids
+    container_name: snort-ids
+    environment:
+      - SPLUNK_HOST=splunk
+      - SPLUNK_HEC_TOKEN=techcorp-hec-token-2024
+      - IDS_MODE=inline
+    ports:
+      - "9090:9090"
+    networks:
+      internal_net:
+        ipv4_address: 172.28.2.5
+      dmz_net:
+        ipv4_address: 172.28.3.2
+      external_net:
+        ipv4_address: 172.28.1.2
+    depends_on:
+      - splunk
+    restart: unless-stopped
+
+  # ==========================================================================
+  # SPLUNK SIEM
+  # ==========================================================================
+  splunk:
+    image: splunk/splunk:latest
+    container_name: splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=TechCorp2024!
+      - SPLUNK_HEC_TOKEN=techcorp-hec-token-2024
+    ports:
+      - "8000:8000"
+      - "8088:8088"
+      - "8089:8089"
+    volumes:
+      - splunk_data:/opt/splunk/var
+    networks:
+      internal_net:
+        ipv4_address: 172.28.2.10
+    restart: unless-stopped
+
+  # ==========================================================================
+  # PDP - Policy Decision Point
+  # ==========================================================================
+  pdp:
+    build: ./pdp
+    container_name: pdp
+    environment:
+      - SPLUNK_HOST=splunk
+      - SPLUNK_HEC_TOKEN=techcorp-hec-token-2024
+    ports:
+      - "5000:5000"
+    networks:
+      internal_net:
+        ipv4_address: 172.28.2.20
+    depends_on:
+      - splunk
+    restart: unless-stopped
+
+  # ==========================================================================
+  # PEP - Policy Enforcement Point
+  # ==========================================================================
+  pep:
+    build: ./pep
+    container_name: pep
+    environment:
+      - PDP_URL=http://pdp:5000
+      - SNORT_IDS_URL=http://snort-ids:9090
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_USER=techcorp_user
+      - DB_PASSWORD=TechCorp2024!
+      - DB_NAME=techcorp_db
+    ports:
+      - "8080:8080"
+    networks:
+      dmz_net:
+        ipv4_address: 172.28.3.10
+      internal_net:
+        ipv4_address: 172.28.2.30
+    depends_on:
+      - pdp
+      - postgres-db
+      - snort-ids
+    restart: unless-stopped
+
+  # ==========================================================================
+  # KEYCLOAK - Identity Provider
+  # ==========================================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.0
+    container_name: keycloak
+    command: start-dev --import-realm
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=TechCorp2024!
+      - KC_HTTP_PORT=8080
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./identity-provider/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    networks:
+      dmz_net:
+        ipv4_address: 172.28.3.20
+    restart: unless-stopped
+
+  # ==========================================================================
+  # POSTGRESQL - Database
+  # ==========================================================================
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      - POSTGRES_USER=techcorp_user
+      - POSTGRES_PASSWORD=TechCorp2024!
+      - POSTGRES_DB=techcorp_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      internal_net:
+        ipv4_address: 172.28.2.40
+    restart: unless-stopped
+
+  # ==========================================================================
+  # EXTERNAL SERVERS
+  # ==========================================================================
+  external-allowed-server:
+    build: ./external-servers/allowed-server
+    container_name: external-allowed-server
+    environment:
+      - SERVER_IP=172.28.1.50
+    networks:
+      external_net:
+        ipv4_address: 172.28.1.50
+    restart: unless-stopped
+
+  external-blocked-server:
+    build: ./external-servers/blocked-server
+    container_name: external-blocked-server
+    environment:
+      - SERVER_IP=172.28.1.60
+    networks:
+      external_net:
+        ipv4_address: 172.28.1.60
+    restart: unless-stopped
+
+  # ==========================================================================
+  # HOST: Development
+  # ==========================================================================
+  dev-host:
+    build: ./scenarios/dev-host
+    container_name: dev-host
+    environment:
+      - HOST_TYPE=development
+      - SCENARIO_NAME=DEV_NET
+      - PEP_URL=http://pep:8080
+      - KEYCLOAK_URL=http://keycloak:8080
+      - HOST_IP=172.28.5.10
+    ports:
+      - "5700:8080"
+    networks:
+      dev_net:
+        ipv4_address: 172.28.5.10
+      dmz_net:
+        ipv4_address: 172.28.3.50
+      external_net:
+        ipv4_address: 172.28.1.10
+    depends_on:
+      - pep
+      - keycloak
+    restart: unless-stopped
+
+  # ==========================================================================
+  # HOST: Production
+  # ==========================================================================
+  prod-host:
+    build: ./scenarios/prod-host
+    container_name: prod-host
+    environment:
+      - HOST_TYPE=production
+      - SCENARIO_NAME=PROD_NET
+      - PEP_URL=http://pep:8080
+      - KEYCLOAK_URL=http://keycloak:8080
+      - HOST_IP=172.28.4.10
+    ports:
+      - "5800:8080"
+    networks:
+      prod_net:
+        ipv4_address: 172.28.4.10
+      dmz_net:
+        ipv4_address: 172.28.3.60
+      external_net:
+        ipv4_address: 172.28.1.11
+    depends_on:
+      - pep
+      - keycloak
+    restart: unless-stopped
+
+  # ==========================================================================
+  # HOST: External Allowed (Whitelisted)
+  # ==========================================================================
+  external-allowed:
+    build: ./scenarios/external-allowed
+    container_name: external-allowed
+    environment:
+      - HOST_TYPE=external
+      - SCENARIO_NAME=EXTERNAL_ALLOWED
+      - PEP_URL=http://pep:8080
+      - KEYCLOAK_URL=http://keycloak:8080
+      - HOST_IP=172.28.1.100
+    ports:
+      - "5900:8080"
+    networks:
+      external_net:
+        ipv4_address: 172.28.1.100
+      dmz_net:
+        ipv4_address: 172.28.3.70
+    depends_on:
+      - pep
+      - keycloak
+    restart: unless-stopped
+
+  # ==========================================================================
+  # HOST: External Blocked (Blacklisted)
+  # ==========================================================================
+  external-blocked:
+    build: ./scenarios/external-blocked
+    container_name: external-blocked
+    environment:
+      - HOST_TYPE=blocked
+      - SCENARIO_NAME=EXTERNAL_BLOCKED
+      - PEP_URL=http://pep:8080
+      - KEYCLOAK_URL=http://keycloak:8080
+      - HOST_IP=172.28.1.200
+    ports:
+      - "5901:8080"
+    networks:
+      external_net:
+        ipv4_address: 172.28.1.200
+      dmz_net:
+        ipv4_address: 172.28.3.80
+    depends_on:
+      - pep
+      - keycloak
+    restart: unless-stopped
+
+  # ==========================================================================
+  # HOST: Malicious (Isolated)
+  # ==========================================================================
+  malicious-host:
+    build: ./scenarios/malicious-host
+    container_name: malicious-host
+    environment:
+      - HOST_TYPE=malicious
+      - SCENARIO_NAME=MALICIOUS_ATTACKER
+      - HOST_IP=172.28.1.250
+    ports:
+      - "5902:8080"
+    networks:
+      external_net:
+        ipv4_address: 172.28.1.250
+    restart: unless-stopped
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  internal_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.2.0/24
+          gateway: 172.28.2.1
+
+  dmz_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.3.0/24
+          gateway: 172.28.3.1
+
+  prod_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.4.0/24
+          gateway: 172.28.4.1
+
+  dev_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.5.0/24
+          gateway: 172.28.5.1
+
+  external_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24
+          gateway: 172.28.1.1
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+volumes:
+  postgres_data:
+  splunk_data:

@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "name": "TechCorp Zero Trust Policies",
+  "description": "Policy definitions for Zero Trust Architecture",
+  "ip_whitelist": [
+    "10.0.1.100",
+    "10.0.4.0/24",
+    "10.0.5.0/24"
+  ],
+  "ip_blacklist": [
+    "10.0.1.200",
+    "10.0.1.250",
+    "10.0.1.60"
+  ],
+  "trust_thresholds": {
+    "full_access": 80,
+    "standard_access": 60,
+    "limited_access": 40,
+    "denied": 0
+  }
+}
