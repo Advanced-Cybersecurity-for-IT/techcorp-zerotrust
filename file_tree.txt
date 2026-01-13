@@ -1,0 +1,88 @@
+================================================================================
+TECHCORP ZERO TRUST ARCHITECTURE - FILE TREE
+================================================================================
+
+techcorp-zerotrust/
+|
+|-- docker-compose.yaml              # Main orchestration file
+|-- README.md                        # Project documentation
+|-- test_scenarios.sh                # Test scenarios script
+|
+|-- database/
+|   |-- init.sql                     # PostgreSQL initialization script
+|
+|-- external-servers/
+|   |-- allowed-server/
+|   |   |-- Dockerfile
+|   |   |-- server.py                # Allowed external server
+|   |
+|   |-- blocked-server/
+|       |-- Dockerfile
+|       |-- server.py                # Blocked external server
+|
+|-- identity-provider/
+|   |-- realm-export.json            # Keycloak realm configuration
+|
+|-- iptables-firewall/
+|   |-- Dockerfile
+|   |-- entrypoint.sh                # Container entrypoint
+|   |-- firewall_proxy.py            # Layer 3 firewall + HTTP proxy
+|
+|-- keycloak-init/
+|   |-- Dockerfile
+|   |-- init-users.sh                # User password initialization script
+|
+|-- pdp/
+|   |-- Dockerfile
+|   |-- pdp.py                       # Policy Decision Point
+|   |-- policies.json                # Policy definitions
+|   |-- requirements.txt             # Python dependencies
+|
+|-- pep/
+|   |-- Dockerfile
+|   |-- package.json                 # Node.js dependencies
+|   |-- pep.js                       # Policy Enforcement Point
+|
+|-- scenarios/
+|   |-- dev-host/
+|   |   |-- Dockerfile
+|   |   |-- package.json
+|   |   |-- web-server.js            # Development host simulator
+|   |
+|   |-- prod-host/
+|   |   |-- Dockerfile
+|   |   |-- package.json
+|   |   |-- web-server.js            # Production host simulator
+|   |
+|   |-- external-allowed/
+|   |   |-- Dockerfile
+|   |   |-- package.json
+|   |   |-- web-server.js            # Whitelisted external host
+|   |
+|   |-- external-blocked/
+|   |   |-- Dockerfile
+|   |   |-- package.json
+|   |   |-- web-server.js            # Blacklisted external host
+|   |
+|   |-- malicious-host/
+|       |-- Dockerfile
+|       |-- package.json
+|       |-- web-server.js            # Malicious attacker simulator
+|
+|-- siem-splunk/
+|   |-- indexes.conf                 # Splunk index configuration
+|   |-- inputs.conf                  # Splunk HEC input configuration
+|
+|-- snort-ids/
+|   |-- Dockerfile
+|   |-- entrypoint.sh                # Container entrypoint
+|   |-- snort.conf                   # Snort configuration
+|   |-- snort_api.py                 # Snort REST API wrapper
+|   |-- rules/
+|       |-- local.rules              # Custom detection rules (36 rules)
+|
+|-- squid-proxy/
+    |-- Dockerfile
+    |-- entrypoint.sh                # Container entrypoint
+    |-- squid.conf                   # Squid proxy configuration
+    |-- blocked_domains.txt          # Domain blacklist

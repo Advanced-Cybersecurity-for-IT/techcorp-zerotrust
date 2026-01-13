@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Allowed server
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 from datetime import datetime

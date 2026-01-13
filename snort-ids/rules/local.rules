@@ -1,37 +1,142 @@
 # ============================================================================
-# TechCorp Zero Trust - Custom Snort Rules
+# TECHCORP ZERO TRUST - SNORT IDS RULES
 # ============================================================================
-# Formato: alert <protocol> <src_ip> <src_port> -> <dst_ip> <dst_port> (options)
+# Custom detection rules for the Zero Trust Architecture
+# Format: action protocol src_ip src_port -> dst_ip dst_port (options)
+# Note: flow options removed for offline pcap analysis compatibility
 # ============================================================================
 
-# SQL Injection Rules
-alert tcp any any -> any any (msg:"SQL Injection - UNION SELECT"; content:"union"; nocase; content:"select"; nocase; sid:1000001; rev:1;)
-alert tcp any any -> any any (msg:"SQL Injection - OR 1=1"; content:"or"; nocase; pcre:"/or\s+[\'\"]?\d+[\'\"]?\s*=\s*[\'\"]?\d+/i"; sid:1000002; rev:1;)
-alert tcp any any -> any any (msg:"SQL Injection - Comment"; content:"--"; sid:1000003; rev:1;)
+# ============================================================================
+# SQL INJECTION DETECTION
+# ============================================================================
+# UNION-based SQL injection
+alert tcp any any -> any any (msg:"SQLI-001 SQL Injection - UNION SELECT"; content:"union"; nocase; content:"select"; nocase; distance:0; within:20; classtype:web-application-attack; sid:1000001; rev:3;)
 
-# XSS Rules
-alert tcp any any -> any any (msg:"XSS - Script Tag"; content:"<script"; nocase; sid:1000010; rev:1;)
-alert tcp any any -> any any (msg:"XSS - Event Handler"; pcre:"/on(error|load|click|mouseover)\s*=/i"; sid:1000011; rev:1;)
+# Boolean-based SQL injection
+alert tcp any any -> any any (msg:"SQLI-002 SQL Injection - OR 1=1"; content:"or"; nocase; pcre:"/or\s+[\x27\x22]?\d+[\x27\x22]?\s*=\s*[\x27\x22]?\d+/i"; classtype:web-application-attack; sid:1000002; rev:3;)
 
-# Path Traversal Rules
-alert tcp any any -> any any (msg:"Path Traversal - Dot Dot Slash"; content:"../"; sid:1000020; rev:1;)
-alert tcp any any -> any any (msg:"Path Traversal - Encoded"; content:"%2e%2e"; nocase; sid:1000021; rev:1;)
+# SQL comment injection
+alert tcp any any -> any any (msg:"SQLI-003 SQL Injection - Comment"; content:"--"; classtype:web-application-attack; sid:1000003; rev:3;)
 
-# Command Injection Rules
-alert tcp any any -> any any (msg:"Command Injection - Shell"; content:"|"; content:"sh"; distance:0; within:10; sid:1000030; rev:1;)
-alert tcp any any -> any any (msg:"Command Injection - Backtick"; content:"`"; sid:1000031; rev:1;)
+# Time-based blind SQL injection
+alert tcp any any -> any any (msg:"SQLI-004 SQL Injection - SLEEP"; content:"sleep"; nocase; content:"("; distance:0; within:5; classtype:web-application-attack; sid:1000004; rev:2;)
 
-# Reconnaissance Rules
-alert tcp any any -> any any (msg:"Scanner - Nikto"; content:"Nikto"; nocase; sid:1000040; rev:1;)
-alert tcp any any -> any any (msg:"Scanner - SQLMap"; content:"sqlmap"; nocase; sid:1000041; rev:1;)
-alert tcp any any -> any any (msg:"Scanner - Nmap"; content:"Nmap"; nocase; sid:1000042; rev:1;)
+# WAITFOR DELAY injection
+alert tcp any any -> any any (msg:"SQLI-005 SQL Injection - WAITFOR"; content:"waitfor"; nocase; content:"delay"; nocase; distance:0; within:15; classtype:web-application-attack; sid:1000005; rev:2;)
 
-# Sensitive File Access
-alert tcp any any -> any any (msg:"Sensitive File - /etc/passwd"; content:"/etc/passwd"; sid:1000050; rev:1;)
-alert tcp any any -> any any (msg:"Sensitive File - /etc/shadow"; content:"/etc/shadow"; sid:1000051; rev:1;)
-alert tcp any any -> any any (msg:"Sensitive File - .htaccess"; content:".htaccess"; sid:1000052; rev:1;)
+# DROP TABLE injection
+alert tcp any any -> any any (msg:"SQLI-006 SQL Injection - DROP TABLE"; content:"drop"; nocase; content:"table"; nocase; distance:0; within:15; classtype:web-application-attack; sid:1000006; rev:2;)
 
-# TechCorp Network Specific Rules
-alert tcp 172.28.1.200 any -> any any (msg:"BLOCKED IP - External Blocked Host"; sid:1000100; rev:1;)
-alert tcp 172.28.1.250 any -> any any (msg:"BLOCKED IP - Malicious Host"; sid:1000101; rev:1;)
-alert tcp 172.28.1.60 any -> any any (msg:"BLOCKED IP - Blocked Server"; sid:1000102; rev:1;)
+# INSERT INTO injection
+alert tcp any any -> any any (msg:"SQLI-007 SQL Injection - INSERT INTO"; content:"insert"; nocase; content:"into"; nocase; distance:0; within:15; classtype:web-application-attack; sid:1000007; rev:2;)
+
+# ============================================================================
+# CROSS-SITE SCRIPTING (XSS) DETECTION
+# ============================================================================
+# Script tag injection
+alert tcp any any -> any any (msg:"XSS-001 Cross-Site Scripting - Script Tag"; content:"<script"; nocase; classtype:web-application-attack; sid:1000010; rev:3;)
+
+# Event handler injection - onerror
+alert tcp any any -> any any (msg:"XSS-002 Cross-Site Scripting - onerror"; content:"onerror"; nocase; content:"="; distance:0; within:5; classtype:web-application-attack; sid:1000011; rev:3;)
+
+# Event handler injection - onload
+alert tcp any any -> any any (msg:"XSS-003 Cross-Site Scripting - onload"; content:"onload"; nocase; content:"="; distance:0; within:5; classtype:web-application-attack; sid:1000012; rev:2;)
+
+# Event handler injection - onclick
+alert tcp any any -> any any (msg:"XSS-004 Cross-Site Scripting - onclick"; content:"onclick"; nocase; content:"="; distance:0; within:5; classtype:web-application-attack; sid:1000013; rev:2;)
+
+# JavaScript protocol handler
+alert tcp any any -> any any (msg:"XSS-005 Cross-Site Scripting - javascript:"; content:"javascript"; nocase; content:":"; distance:0; within:3; classtype:web-application-attack; sid:1000014; rev:2;)
+
+# ============================================================================
+# PATH TRAVERSAL DETECTION
+# ============================================================================
+# Directory traversal - ../
+alert tcp any any -> any any (msg:"TRAV-001 Path Traversal - Dot Dot Slash"; content:"../"; classtype:web-application-attack; sid:1000020; rev:3;)
+
+# Directory traversal - encoded %2e%2e
+alert tcp any any -> any any (msg:"TRAV-002 Path Traversal - URL Encoded"; content:"%2e%2e"; nocase; classtype:web-application-attack; sid:1000021; rev:3;)
+
+# Directory traversal - backslash
+alert tcp any any -> any any (msg:"TRAV-003 Path Traversal - Backslash"; content:"..\\"; classtype:web-application-attack; sid:1000022; rev:2;)
+
+# ============================================================================
+# COMMAND INJECTION DETECTION
+# ============================================================================
+# Shell command - pipe to shell (|7C| is hex for pipe character)
+alert tcp any any -> any any (msg:"CMD-001 Command Injection - Pipe"; content:"|7C|"; content:"sh"; distance:0; within:10; classtype:web-application-attack; sid:1000030; rev:4;)
+
+# Shell command - backtick execution (|60| is hex for backtick)
+alert tcp any any -> any any (msg:"CMD-002 Command Injection - Backtick"; content:"|60|"; classtype:web-application-attack; sid:1000031; rev:4;)
+
+# Shell command - semicolon cat (|3B| is hex for semicolon)
+alert tcp any any -> any any (msg:"CMD-003 Command Injection - cat"; content:"|3B|"; content:"cat"; distance:0; within:10; classtype:web-application-attack; sid:1000032; rev:3;)
+
+# Shell command - semicolon ls (|3B| is hex for semicolon)
+alert tcp any any -> any any (msg:"CMD-004 Command Injection - ls"; content:"|3B|"; content:"ls"; distance:0; within:10; classtype:web-application-attack; sid:1000033; rev:3;)
+
+# Shell command - wget download
+alert tcp any any -> any any (msg:"CMD-005 Command Injection - wget"; content:"wget"; nocase; classtype:web-application-attack; sid:1000034; rev:2;)
+
+# Shell command - curl download (|3B| is hex for semicolon)
+alert tcp any any -> any any (msg:"CMD-006 Command Injection - curl command"; content:"|3B|"; content:"curl"; distance:0; within:10; classtype:web-application-attack; sid:1000035; rev:3;)
+
+# ============================================================================
+# RECONNAISSANCE / SCANNER DETECTION
+# ============================================================================
+# Nikto scanner
+alert tcp any any -> any any (msg:"SCAN-001 Scanner - Nikto"; content:"Nikto"; nocase; classtype:web-application-activity; sid:1000040; rev:3;)
+
+# SQLMap scanner
+alert tcp any any -> any any (msg:"SCAN-002 Scanner - SQLMap"; content:"sqlmap"; nocase; classtype:web-application-activity; sid:1000041; rev:3;)
+
+# Nmap scanner
+alert tcp any any -> any any (msg:"SCAN-003 Scanner - Nmap"; content:"Nmap"; nocase; classtype:web-application-activity; sid:1000042; rev:3;)
+
+# Acunetix scanner
+alert tcp any any -> any any (msg:"SCAN-004 Scanner - Acunetix"; content:"Acunetix"; nocase; classtype:web-application-activity; sid:1000043; rev:2;)
+
+# Burp Suite
+alert tcp any any -> any any (msg:"SCAN-005 Scanner - Burp Suite"; content:"Burp"; nocase; classtype:web-application-activity; sid:1000044; rev:2;)
+
+# ============================================================================
+# SENSITIVE FILE ACCESS
+# ============================================================================
+# /etc/passwd access
+alert tcp any any -> any any (msg:"FILE-001 Sensitive File - /etc/passwd"; content:"/etc/passwd"; classtype:web-application-attack; sid:1000050; rev:3;)
+
+# /etc/shadow access
+alert tcp any any -> any any (msg:"FILE-002 Sensitive File - /etc/shadow"; content:"/etc/shadow"; classtype:web-application-attack; sid:1000051; rev:3;)
+
+# .htaccess access
+alert tcp any any -> any any (msg:"FILE-003 Sensitive File - .htaccess"; content:".htaccess"; classtype:web-application-attack; sid:1000052; rev:3;)
+
+# web.config access
+alert tcp any any -> any any (msg:"FILE-004 Sensitive File - web.config"; content:"web.config"; nocase; classtype:web-application-attack; sid:1000053; rev:2;)
+
+# ============================================================================
+# TECHCORP NETWORK - BLOCKED IPS
+# ============================================================================
+# Alert on traffic from blocked external host
+alert ip 172.28.1.200 any -> any any (msg:"BLOCKED-001 Traffic from Blocked External Host"; classtype:policy-violation; sid:1000100; rev:2;)
+
+# Alert on traffic from malicious host
+alert ip 172.28.1.250 any -> any any (msg:"BLOCKED-002 Traffic from Malicious Host"; classtype:policy-violation; sid:1000101; rev:2;)
+
+# Alert on traffic from blocked server
+alert ip 172.28.1.60 any -> any any (msg:"BLOCKED-003 Traffic from Blocked Server"; classtype:policy-violation; sid:1000102; rev:2;)
+
+# ============================================================================
+# PROTOCOL ANOMALIES
+# ============================================================================
+# HTTP TRACE method
+alert tcp any any -> any any (msg:"PROTO-001 HTTP TRACE Method"; content:"TRACE"; depth:5; classtype:web-application-activity; sid:1000060; rev:2;)
+
+# HTTP DEBUG method
+alert tcp any any -> any any (msg:"PROTO-002 HTTP DEBUG Method"; content:"DEBUG"; depth:5; classtype:web-application-activity; sid:1000061; rev:2;)
+
+# ============================================================================
+# DATA EXFILTRATION INDICATORS
+# ============================================================================
+# Large base64 encoded payload (potential data exfil)
+alert tcp any any -> any any (msg:"EXFIL-001 Large Base64 Payload"; pcre:"/[A-Za-z0-9+\/]{100,}={0,2}/"; classtype:policy-violation; sid:1000070; rev:2;)

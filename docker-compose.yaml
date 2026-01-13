@@ -6,43 +6,68 @@ version: '3.8'
 
 services:
   # ==========================================================================
-  # IPTABLES FIREWALL (Network Level) - Python Simulator
+  # IPTABLES FIREWALL (Network Level) - Real Packet Filtering
   # ==========================================================================
   iptables-firewall:
     build: ./iptables-firewall
     container_name: iptables-firewall
+    # Required for real iptables functionality
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.forwarding=1
+    environment:
+      # Forward to Squid (L7) instead of directly to PEP
+      - UPSTREAM_HOST=squid-proxy
+      - UPSTREAM_IP=172.28.3.5
+      - UPSTREAM_PORT=3128
+      - LISTEN_PORT=8080
+      - STATUS_PORT=8888
     ports:
-      - "8888:8888"
+      - "8888:8888"   # Status API
+      - "8081:8080"   # Forwarded traffic (external access point)
     networks:
-      internal_net:
-        ipv4_address: 172.28.2.2
+      external_net:
+        ipv4_address: 172.28.1.254  # Gateway for external hosts
+      dmz_net:
+        ipv4_address: 172.28.3.254  # Access to Squid
+    depends_on:
+      - squid-proxy
     restart: unless-stopped
 
   # ==========================================================================
-  # SQUID PROXY (Application Level) - Python Simulator
+  # SQUID PROXY (Application Level) - Real Layer 7 Firewall
   # ==========================================================================
   squid-proxy:
     build: ./squid-proxy
     container_name: squid-proxy
+    environment:
+      - PEP_HOST=pep
+      - PEP_PORT=8080
+      - SQUID_PORT=3128
+      - HEALTH_PORT=3129
     ports:
-      - "3128:3128"
+      - "3128:3128"   # Squid proxy port
+      - "3129:3129"   # Health check port
     networks:
       dmz_net:
         ipv4_address: 172.28.3.5
-      external_net:
-        ipv4_address: 172.28.1.5
+    depends_on:
+      - pep
     restart: unless-stopped
 
   # ==========================================================================
-  # SNORT IDS - Intrusion Detection System
+  # SNORT IDS - Real Intrusion Detection System
   # ==========================================================================
   snort-ids:
     build: ./snort-ids
     container_name: snort-ids
     environment:
+      - API_PORT=9090
       - SPLUNK_HOST=splunk
       - SPLUNK_HEC_TOKEN=techcorp-hec-token-2024
-      - IDS_MODE=inline
     ports:
       - "9090:9090"
     networks:
@@ -54,6 +79,12 @@ services:
         ipv4_address: 172.28.1.2
     depends_on:
       - splunk
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
     restart: unless-stopped
 
   # ==========================================================================
@@ -64,6 +95,7 @@ services:
     container_name: splunk
     environment:
       - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
       - SPLUNK_PASSWORD=TechCorp2024!
       - SPLUNK_HEC_TOKEN=techcorp-hec-token-2024
     ports:
@@ -72,6 +104,8 @@ services:
       - "8089:8089"
     volumes:
       - splunk_data:/opt/splunk/var
+      - ./siem-splunk/inputs.conf:/opt/splunk/etc/system/local/inputs.conf
+      - ./siem-splunk/indexes.conf:/opt/splunk/etc/system/local/indexes.conf
     networks:
       internal_net:
         ipv4_address: 172.28.2.10
@@ -140,7 +174,26 @@ services:
     networks:
       dmz_net:
         ipv4_address: 172.28.3.20
+      external_net:
+        ipv4_address: 172.28.1.20  # Accessible for external authentication
     restart: unless-stopped
+
+  # ==========================================================================
+  # KEYCLOAK INIT - Sets user passwords after Keycloak starts
+  # ==========================================================================
+  keycloak-init:
+    build: ./keycloak-init
+    container_name: keycloak-init
+    environment:
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=TechCorp2024!
+    networks:
+      dmz_net:
+        ipv4_address: 172.28.3.21
+    depends_on:
+      - keycloak
+    restart: "no"
 
   # ==========================================================================
   # POSTGRESQL - Database
@@ -246,18 +299,18 @@ services:
     environment:
       - HOST_TYPE=external
       - SCENARIO_NAME=EXTERNAL_ALLOWED
-      - PEP_URL=http://pep:8080
+      - PEP_URL=http://iptables-firewall:8080
       - KEYCLOAK_URL=http://keycloak:8080
       - HOST_IP=172.28.1.100
+      - FIREWALL_IP=172.28.1.254
     ports:
       - "5900:8080"
     networks:
       external_net:
         ipv4_address: 172.28.1.100
-      dmz_net:
-        ipv4_address: 172.28.3.70
+      # NOTE: dmz_net removed - must go through firewall to reach PEP
     depends_on:
-      - pep
+      - iptables-firewall
       - keycloak
     restart: unless-stopped
 
@@ -270,18 +323,18 @@ services:
     environment:
       - HOST_TYPE=blocked
       - SCENARIO_NAME=EXTERNAL_BLOCKED
-      - PEP_URL=http://pep:8080
+      - PEP_URL=http://iptables-firewall:8080
       - KEYCLOAK_URL=http://keycloak:8080
       - HOST_IP=172.28.1.200
+      - FIREWALL_IP=172.28.1.254
     ports:
       - "5901:8080"
     networks:
       external_net:
         ipv4_address: 172.28.1.200
-      dmz_net:
-        ipv4_address: 172.28.3.80
+      # NOTE: dmz_net removed - must go through firewall to reach PEP
     depends_on:
-      - pep
+      - iptables-firewall
       - keycloak
     restart: unless-stopped
 

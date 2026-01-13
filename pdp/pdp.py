@@ -122,7 +122,7 @@ class SIEMClient:
             )
             if response.status_code == 200:
                 data = response.json()
-                return data.get('results', [{}])[0].get('count', 0)
+                return int(data.get('results', [{}])[0].get('count', 0))
             return 0
         except Exception as e:
             logger.warning(f"SIEM security events query failed: {e}")
@@ -259,14 +259,25 @@ def calculate_trust_score(username, source_ip, user_roles, context):
 def evaluate_request(request_data):
     """
     Valuta una richiesta di accesso secondo le policy Zero Trust
-    
-    Input: {
+
+    Supports both nested and flat input formats:
+
+    Nested format: {
         "subject": {"username": "...", "roles": [...], "token": "..."},
         "device": {"ip": "...", "hostname": "...", "network": "..."},
         "resource": {"type": "...", "action": "...", "path": "..."},
         "context": {"timestamp": "...", "user_agent": "..."}
     }
-    
+
+    Flat format: {
+        "username": "...",
+        "user_roles": [...],
+        "source_ip": "...",
+        "resource": "...",
+        "action": "...",
+        "context": {...}
+    }
+
     Output: {
         "decision": "allow" | "deny",
         "trust_score": float,
@@ -274,17 +285,28 @@ def evaluate_request(request_data):
         "components": {...}
     }
     """
-    
-    subject = request_data.get('subject', {})
-    device = request_data.get('device', {})
-    resource = request_data.get('resource', {})
-    context = request_data.get('context', {})
-    
-    username = subject.get('username', 'anonymous')
-    user_roles = subject.get('roles', [])
-    source_ip = device.get('ip', 'unknown')
-    resource_type = resource.get('type', 'unknown')
-    action = resource.get('action', 'read')
+
+    # Support both nested and flat input formats
+    if 'subject' in request_data and isinstance(request_data.get('subject'), dict):
+        # Nested format
+        subject = request_data.get('subject', {})
+        device = request_data.get('device', {})
+        resource_data = request_data.get('resource', {})
+        context = request_data.get('context', {})
+
+        username = subject.get('username', 'anonymous')
+        user_roles = subject.get('roles', [])
+        source_ip = device.get('ip', 'unknown')
+        resource_type = resource_data.get('type', 'unknown') if isinstance(resource_data, dict) else str(resource_data)
+        action = resource_data.get('action', 'read') if isinstance(resource_data, dict) else 'read'
+    else:
+        # Flat format
+        username = request_data.get('username', 'anonymous')
+        user_roles = request_data.get('user_roles', request_data.get('roles', []))
+        source_ip = request_data.get('source_ip', request_data.get('ip', 'unknown'))
+        resource_type = request_data.get('resource', 'unknown')
+        action = request_data.get('action', 'read')
+        context = request_data.get('context', {})
     
     logger.info(f"Evaluating request: user={username}, ip={source_ip}, resource={resource_type}, action={action}")
     

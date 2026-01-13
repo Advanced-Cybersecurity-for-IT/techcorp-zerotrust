@@ -16,9 +16,14 @@ const { Pool } = require('pg');
 const fetch = require('node-fetch');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const jwksRsa = require('jwks-rsa');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// Keycloak configuration
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://keycloak:8080';
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'techcorp';
 
 // ============================================================================
 // CONFIGURATION
@@ -40,31 +45,89 @@ app.use(express.json());
 app.use(morgan('combined'));
 
 // ============================================================================
-// MIDDLEWARE: Extract user info from token
+// JWKS CLIENT: Fetches public keys from Keycloak
 // ============================================================================
-const extractUserInfo = (req, res, next) => {
+const jwksClient = jwksRsa({
+    jwksUri: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`,
+    cache: true,
+    cacheMaxEntries: 5,
+    cacheMaxAge: 600000, // 10 minutes
+    rateLimit: true,
+    jwksRequestsPerMinute: 10
+});
+
+// Helper function to get signing key
+function getSigningKey(header, callback) {
+    jwksClient.getSigningKey(header.kid, (err, key) => {
+        if (err) {
+            console.error('[PEP] Error fetching signing key:', err.message);
+            callback(err, null);
+        } else {
+            const signingKey = key.getPublicKey();
+            callback(null, signingKey);
+        }
+    });
+}
+
+// Allowed issuers (internal Docker hostname and external localhost access)
+const ALLOWED_ISSUERS = [
+    `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,
+    `http://localhost:8180/realms/${KEYCLOAK_REALM}`,
+    `http://127.0.0.1:8180/realms/${KEYCLOAK_REALM}`
+];
+
+// Promisified JWT verification
+function verifyToken(token) {
+    return new Promise((resolve, reject) => {
+        jwt.verify(token, getSigningKey, {
+            algorithms: ['RS256'],
+            issuer: ALLOWED_ISSUERS
+        }, (err, decoded) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(decoded);
+            }
+        });
+    });
+}
+
+// ============================================================================
+// MIDDLEWARE: Extract and VERIFY user info from token
+// ============================================================================
+const extractUserInfo = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     let userInfo = {
         username: 'anonymous',
         roles: [],
-        email: null
+        email: null,
+        verified: false
     };
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
         try {
-            const token = authHeader.substring(7);
-            const decoded = jwt.decode(token);
-            if (decoded) {
-                userInfo.username = decoded.preferred_username || decoded.sub || 'unknown';
-                userInfo.roles = decoded.realm_access?.roles || [];
-                userInfo.email = decoded.email;
-                userInfo.name = `${decoded.given_name || ''} ${decoded.family_name || ''}`.trim();
-            }
+            // Cryptographically verify the token against Keycloak's public key
+            const decoded = await verifyToken(token);
+
+            userInfo.username = decoded.preferred_username || decoded.sub || 'unknown';
+            userInfo.roles = decoded.realm_access?.roles || [];
+            userInfo.email = decoded.email;
+            userInfo.name = `${decoded.given_name || ''} ${decoded.family_name || ''}`.trim();
+            userInfo.verified = true;
+
+            console.log(`[PEP] Token VERIFIED for user: ${userInfo.username}, roles: ${userInfo.roles.join(', ')}`);
         } catch (e) {
-            console.error('[PEP] Token decode error:', e.message);
+            console.error(`[PEP] Token verification FAILED: ${e.message}`);
+            // Token provided but invalid - reject the request
+            return res.status(401).json({
+                error: 'Invalid or expired token',
+                details: e.message,
+                hint: 'Please obtain a valid token from Keycloak'
+            });
         }
     }
-    
+
     req.userInfo = userInfo;
     next();
 };

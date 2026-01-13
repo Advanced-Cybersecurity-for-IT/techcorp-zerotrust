@@ -1,0 +1,17 @@
+# ============================================================================
+# SQUID DOMAIN BLACKLIST
+# TechCorp Zero Trust Architecture
+# ============================================================================
+# Domains listed here are blocked at Layer 7 by Squid proxy.
+# Format: one domain per line (can use . prefix for subdomains)
+# ============================================================================
+
+# Blocked servers in lab environment
+external-blocked-server
+blocked-server
+
+# Malware and phishing sites
+.malware-site.com
+.phishing-site.com
+.hacker-tools.org
+.malicious-domain.com
