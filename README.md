@@ -686,7 +686,7 @@ Di seguito sono presentati i video dimostrativi che illustrano il funzionamento 
 
 #### 📹 Scenario 1: Accesso dalla Rete Interna al Database
 
-<video src="resources/rete-interna-dbms.mp4" controls width="100%"></video>
+<video src="rete-interna-dbms.mp4" controls width="100%"></video>
 
 **Cosa succede in questo video:**
 
