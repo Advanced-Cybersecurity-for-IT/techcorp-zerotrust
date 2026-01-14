@@ -1074,8 +1074,6 @@ index=zerotrust sourcetype=snort_ids action=block
 *📄 Documento redatto per il corso di **ADVANCED CYBERSECURITY FOR IT***  
 *📅 Versione 1.0 - Gennaio 2025*
 
----
 
-**Made with ❤️ for Zero Trust Security**
 
 </div>
