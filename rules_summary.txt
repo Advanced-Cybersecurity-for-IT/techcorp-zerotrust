@@ -1,94 +1,94 @@
 ================================================================================
-TECHCORP ZERO TRUST - SNORT IDS RULES SUMMARY
+                    TECHCORP ZERO TRUST - RIEPILOGO REGOLE SNORT IDS
 ================================================================================
-Total Rules: 36
-Categories: 9
+Totale Regole: 36
+Categorie: 9
 ================================================================================
 
-SQL INJECTION DETECTION (7 rules)
+RILEVAMENTO SQL INJECTION (7 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000001   SQLI-001    UNION SELECT injection
-1000002   SQLI-002    Boolean-based (OR 1=1)
-1000003   SQLI-003    SQL comment (--)
-1000004   SQLI-004    Time-based blind (SLEEP)
-1000005   SQLI-005    WAITFOR DELAY injection
+1000001   SQLI-001    Injection UNION SELECT
+1000002   SQLI-002    Basata su Booleani (OR 1=1)
+1000003   SQLI-003    Commento SQL (--)
+1000004   SQLI-004    Basata sul tempo blind (SLEEP)
+1000005   SQLI-005    Injection WAITFOR DELAY
 1000006   SQLI-006    DROP TABLE
 1000007   SQLI-007    INSERT INTO
 
-CROSS-SITE SCRIPTING - XSS (5 rules)
+CROSS-SITE SCRIPTING - XSS (5 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000010   XSS-001     <script> tag injection
-1000011   XSS-002     onerror event handler
-1000012   XSS-003     onload event handler
-1000013   XSS-004     onclick event handler
-1000014   XSS-005     javascript: protocol
+1000010   XSS-001     Injection tag <script>
+1000011   XSS-002     Event handler onerror
+1000012   XSS-003     Event handler onload
+1000013   XSS-004     Event handler onclick
+1000014   XSS-005     Protocollo javascript:
 
-PATH TRAVERSAL (3 rules)
+PATH TRAVERSAL (3 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000020   TRAV-001    ../ directory traversal
+1000020   TRAV-001    Directory traversal ../
 1000021   TRAV-002    URL encoded %2e%2e
-1000022   TRAV-003    Backslash ..\\
+1000022   TRAV-003    Backslash ..\
 
-COMMAND INJECTION (6 rules)
+COMMAND INJECTION (6 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000030   CMD-001     Pipe to shell
-1000031   CMD-002     Backtick execution
-1000032   CMD-003     Semicolon + cat
-1000033   CMD-004     Semicolon + ls
-1000034   CMD-005     wget download
-1000035   CMD-006     curl command
+1000030   CMD-001     Pipe verso shell
+1000031   CMD-002     Esecuzione backtick
+1000032   CMD-003     Punto e virgola + cat
+1000033   CMD-004     Punto e virgola + ls
+1000034   CMD-005     Download wget
+1000035   CMD-006     Comando curl
 
-SCANNER DETECTION (5 rules)
+RILEVAMENTO SCANNER (5 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000040   SCAN-001    Nikto scanner
-1000041   SCAN-002    SQLMap scanner
-1000042   SCAN-003    Nmap scanner
-1000043   SCAN-004    Acunetix scanner
+1000040   SCAN-001    Scanner Nikto
+1000041   SCAN-002    Scanner SQLMap
+1000042   SCAN-003    Scanner Nmap
+1000043   SCAN-004    Scanner Acunetix
 1000044   SCAN-005    Burp Suite
 
-SENSITIVE FILE ACCESS (4 rules)
+ACCESSO FILE SENSIBILI (4 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
 1000050   FILE-001    /etc/passwd
 1000051   FILE-002    /etc/shadow
 1000052   FILE-003    .htaccess
 1000053   FILE-004    web.config
 
-BLOCKED IPS - TECHCORP NETWORK (3 rules)
+IP BLOCCATI - RETE TECHCORP (3 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000100   BLOCKED-001 Traffic from 172.28.1.200 (Blocked External Host)
-1000101   BLOCKED-002 Traffic from 172.28.1.250 (Malicious Host)
-1000102   BLOCKED-003 Traffic from 172.28.1.60 (Blocked Server)
+1000100   BLOCKED-001 Traffico da 172.28.1.200 (Host Esterno Bloccato)
+1000101   BLOCKED-002 Traffico da 172.28.1.250 (Host Malevolo)
+1000102   BLOCKED-003 Traffico da 172.28.1.60 (Server Bloccato)
 
-PROTOCOL ANOMALIES (2 rules)
+ANOMALIE PROTOCOLLO (2 regole)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000060   PROTO-001   HTTP TRACE method
-1000061   PROTO-002   HTTP DEBUG method
+1000060   PROTO-001   Metodo HTTP TRACE
+1000061   PROTO-002   Metodo HTTP DEBUG
 
-DATA EXFILTRATION INDICATORS (1 rule)
+INDICATORI ESFILTRAZIONE DATI (1 regola)
 --------------------------------------------------------------------------------
-SID       Rule ID     Description
+SID       Rule ID     Descrizione
 --------------------------------------------------------------------------------
-1000070   EXFIL-001   Large Base64 payload (100+ chars)
+1000070   EXFIL-001   Payload Base64 di grandi dimensioni (100+ chars)
 
 ================================================================================
-Classification Types Used:
-- web-application-attack: High severity web attacks
-- web-application-activity: Suspicious but potentially legitimate activity
-- policy-violation: Violations of network security policy
+Tipi di Classificazione Usati:
+- web-application-attack: Attacchi web ad alta gravità
+- web-application-activity: Attività sospetta ma potenzialmente legittima
+- policy-violation: Violazioni della policy di sicurezza di rete
 ================================================================================

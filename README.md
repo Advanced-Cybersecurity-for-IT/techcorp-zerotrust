@@ -678,6 +678,30 @@ curl -X GET http://pep:8080/api/db/audit \
 | T11 | ✅ PASS | Developer riceve 403 |
 | T12 | ✅ PASS | Componenti calcolati correttamente |
 
+### 6.4 Video Demo degli Scenari di Test
+
+Nella cartella `resources/` sono disponibili video dimostrativi che illustrano il funzionamento dell'architettura Zero Trust in scenari reali. Questi video mostrano l'intero flusso di comunicazione tra i vari componenti del sistema.
+
+| Video | Descrizione | Scenario Dimostrato |
+|-------|-------------|---------------------|
+| 📹 `Rete-Interna->DBMS.mp4` | Accesso dalla rete interna al database | Dimostra un utente autorizzato dalla rete interna (development/production) che accede al database PostgreSQL attraverso il PEP. Il video mostra il calcolo del Trust Score, la validazione JWT, e l'autorizzazione concessa dal PDP. |
+| 📹 `Rete-Esterna->DBMS.mp4` | Tentativo di accesso dalla rete esterna al database | Illustra come il sistema gestisce i tentativi di accesso al database da reti esterne. Il video evidenzia i controlli di sicurezza attivati: verifica firewall iptables, policy di Squid, e decisioni del PDP che tengono conto della rete di provenienza nel calcolo del Trust Score. |
+| 📹 `Rete-Interna->Rete-Esterna.mp4` | Comunicazione dalla rete interna verso l'esterno | Mostra il comportamento del sistema quando un host interno tenta di comunicare con server esterni. Il video dimostra il filtraggio Layer 7 di Squid, il blocco di domini nella blacklist, e il logging degli eventi nel SIEM Splunk. |
+
+#### Come Visualizzare i Video
+
+I video sono in formato MP4 e possono essere riprodotti con qualsiasi player multimediale standard. Si trovano nella directory:
+
+```
+techcorp-zerotrust/
+└── resources/
+    ├── Rete-Interna->DBMS.mp4
+    ├── Rete-Esterna->DBMS.mp4
+    └── Rete-Interna->Rete-Esterna.mp4
+```
+
+> **Nota:** I video sono stati registrati durante sessioni di test reali del sistema e mostrano output autentici dei vari componenti (PDP, PEP, Snort IDS, Splunk).
+
 ---
 
 ## 7. Analisi di Sicurezza
@@ -891,6 +915,11 @@ techcorp-zerotrust/
 │   ├── external-allowed/
 │   ├── external-blocked/
 │   └── malicious-host/
+│
+├── resources/                       # Video demo scenari di test
+│   ├── Rete-Interna->DBMS.mp4      # Accesso interno al database
+│   ├── Rete-Esterna->DBMS.mp4      # Accesso esterno al database
+│   └── Rete-Interna->Rete-Esterna.mp4  # Comunicazione interna->esterna
 │
 ├── docker-compose.yaml
 ├── test_scenarios.sh

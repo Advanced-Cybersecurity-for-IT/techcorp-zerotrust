@@ -1,189 +1,179 @@
 ================================================================================
                     TechCorp Zero Trust Architecture
-                    Test Scenarios Script Instructions
+                    Istruzioni Script Scenari di Test
 ================================================================================
 
-OVERVIEW
+PANORAMICA
 --------
-The test_scenarios.sh script is a comprehensive demonstration suite that
-validates all Zero Trust Architecture principles implemented in this project.
-It is designed for academic presentation to showcase how ZTA works in practice.
+Lo script test_scenarios.sh e' una suite di Unit Test e Test End-to-End che
+valida tutti i principi della Zero Trust Architecture implementati in questo
+progetto.
 
 
-PREREQUISITES
+PREREQUISITI
 -------------
-1. Docker and Docker Compose installed
-2. All services running: docker-compose up -d
-3. Wait ~2 minutes for all services to initialize (especially Keycloak and Splunk)
-4. curl and awk must be available (standard on most Linux systems)
+1. Docker e Docker Compose installati aul proprio sistema
+2. Tutti i servizi in esecuzione: docker-compose up -d --build
+3. Attendere fino a 5 minuti per l'inizializzazione di tutti i servizi (specialmente Splunk e Keycloak)
+4. curl e awk installati sul proprio sistema
 
 
-HOW TO RUN
+COME ESEGUIRE
 ----------
-From the project root directory:
+Dalla directory radice del progetto:
 
     chmod +x test_scenarios.sh
     ./test_scenarios.sh
 
-The script will run 30 tests across 8 sections and display colored output
-showing PASS/FAIL status for each test.
+Lo script eseguira' circa 30 test attraverso 7 sezioni e visualizzera' 
+l'esito di ogni test (PASSATO/FALLITO).
 
 
-SCRIPT SECTIONS
----------------
-
-SECTION 1: Infrastructure Health Verification
-    - Verifies all 8 ZTA components are operational
-    - Components: PDP, PEP, Snort IDS, IPTables Firewall, Squid Proxy,
-                  Keycloak, PostgreSQL, Splunk SIEM
-    - Demonstrates: System readiness
-
-SECTION 2: Dynamic Trust Score Calculation
-    - Tests the trust score formula with different scenarios
-    - Formula: Trust = (Role * 0.30) + (History * 0.25) +
-                       (Anomaly * 0.25) + (Context * 0.20)
-    - Test cases:
-        * CEO from Production Network: Expected ~100 (highest trust)
-        * Developer from Development Network: Expected 85-95
-        * Analyst from External Whitelisted: Expected 75-85 (context penalty)
-        * Any user from Blacklisted IP: Expected <= 15 (immediate distrust)
-    - Demonstrates: Context-aware, dynamic trust evaluation
-
-SECTION 3: Role-Based Access Control (RBAC)
-    - Tests that access requires BOTH sufficient trust AND authorized role
-    - Test cases:
-        * CEO accessing audit logs: ALLOWED (has role + trust)
-        * Developer accessing audit logs: DENIED (role not authorized)
-        * Sales Manager accessing customers: ALLOWED (has role)
-        * Developer attempting WRITE action: DENIED (action not permitted)
-    - Demonstrates: Least Privilege principle
-
-SECTION 4: Network-Level Security (IPTables Firewall)
-    - Tests Layer 3 IP-based filtering
-    - Test cases:
-        * Firewall configuration retrieval
-        * Blacklisted IP (172.28.1.200): BLOCKED at TCP level
-        * Whitelisted IP (172.28.1.100): ALLOWED through
-    - Demonstrates: Defense in Depth (first layer)
-
-SECTION 5: Intrusion Detection System (Snort IDS)
-    - Tests deep packet inspection and attack detection
-    - Attack types tested:
-        * SQL Injection: ' OR '1'='1, UNION SELECT
-        * Cross-Site Scripting (XSS): <script> tags
-        * Path Traversal: /../../../etc/passwd
-        * Command Injection: ; cat /etc/passwd
-    - Also displays IDS statistics (packets analyzed, alerts, blocks)
-    - Demonstrates: Assume Breach principle
-
-SECTION 6: Identity & Authentication (Keycloak)
-    - Tests OAuth2/OIDC authentication flow
-    - Test cases:
-        * Valid credentials (CEO m.rossi): Token obtained
-        * Invalid credentials: Correctly rejected
-    - Demonstrates: Never Trust, Always Verify
-
-SECTION 7: Complete Policy Evaluation Flow
-    - Tests the full (s,d,n,o,r) tuple evaluation
-    - s=Subject, d=Device, n=Network, o=Object, r=Request
-    - Test cases:
-        * Full access: CEO from Production accessing employees (ALLOW)
-        * Insufficient trust: Analyst from unknown external accessing
-          audit resource (DENY - trust 77 < required 80)
-        * Blacklisted IP: Even CEO from blacklisted IP (DENY immediately)
-    - Demonstrates: Complete Zero Trust decision flow
-
-SECTION 8: Network Segmentation Impact
-    - Shows how the same user gets different trust scores based on network
-    - Compares Developer (f.colombo) trust from:
-        * Production Network: +30 context bonus
-        * Development Network: +25 context bonus
-        * Internal Network: +20 context bonus
-        * DMZ Network: +15 context bonus
-        * External Whitelisted: -15 context penalty
-    - Demonstrates: Network location affects trust level
-
-
-EXPECTED OUTPUT
----------------
-If all services are running correctly:
-
-    Total Tests: 30
-    Passed: 30
-    Failed: 0
-
-    ============================================
-       ALL TESTS PASSED - ZTA Working Correctly
-    ============================================
-
-
-TROUBLESHOOTING
----------------
-If tests fail:
-
-1. Services not ready:
-   - Wait 2-3 minutes after docker-compose up
-   - Check: docker-compose ps (all should be "Up" or "healthy")
-
-2. Keycloak authentication fails:
-   - Verify keycloak-init completed: docker logs keycloak-init
-   - Check Keycloak is accessible: curl http://localhost:8180/realms/techcorp
-
-3. Database connection fails:
-   - Check PostgreSQL: docker logs postgres-db
-   - Verify port 5432 is accessible
-
-4. IDS tests fail:
-   - Check Snort is running: curl http://localhost:9090/health
-   - View Snort logs: docker logs snort-ids
-
-
-ZERO TRUST PRINCIPLES DEMONSTRATED
-----------------------------------
-1. NEVER TRUST, ALWAYS VERIFY
-   - Every request is authenticated (Keycloak JWT)
-   - Every request is authorized (PDP evaluation)
-   - No implicit trust based on network location alone
-
-2. LEAST PRIVILEGE ACCESS
-   - Users only access resources their role permits
-   - Actions (read/write/delete) are role-restricted
-   - Sensitive resources (audit) require higher trust + specific roles
-
-3. ASSUME BREACH
-   - Multiple security layers (IPTables -> Squid -> Snort -> PEP -> PDP)
-   - IDS monitors all traffic for attack patterns
-   - All decisions logged to SIEM for audit trail
-
-4. CONTINUOUS VERIFICATION
-   - Trust score calculated on EVERY request
-   - Historical behavior affects current trust (SIEM integration)
-   - Anomalies reduce trust score dynamically
-
-
-ADDITIONAL RESOURCES
+ENDPOINT DEI SERVIZI
 --------------------
-After running tests, you can explore:
+| Servizio         | Endpoint                  |
+|------------------|---------------------------|
+| PEP              | http://localhost:8080     |
+| PDP              | http://localhost:5000     |
+| Keycloak         | http://localhost:8180     |
+| Snort IDS        | http://localhost:9090     |
+| IPTables FW      | http://localhost:8888     |
+| Squid Proxy      | http://localhost:3129     |
+| Firewall Proxy   | http://localhost:8081     |
 
-- Splunk SIEM Dashboard: http://localhost:8000
+---------------
+
+SEZIONE 1: Verifica Stato Componenti (Unit Test)
+    - Verifica che tutti i componenti ZTA siano operativi
+    - Componenti testati:
+        * PDP (Policy Decision Point)
+        * PEP (Policy Enforcement Point)
+        * Snort IDS (Intrusion Detection System)
+        * Firewall IPTables (Layer 3)
+        * Squid Proxy (Layer 7)
+        * Keycloak (Identity Provider)
+
+SEZIONE 2: Test di Autenticazione
+    - Testa il flusso di autenticazione OAuth2/OIDC tramite Keycloak
+    - Casi di test:
+        * Credenziali valide (CEO m.rossi): Token JWT ottenuto
+        * Credenziali non valide: Correttamente rifiutate con errore
+
+SEZIONE 3: Test Calcolo Trust Score
+    - Testa la formula dinamica del trust score con diversi scenari
+    - NOTA: Il trust score varia dinamicamente in base agli eventi di sicurezza
+    - Casi di test:
+        * CEO da Rete Produzione (172.28.4.10): Atteso >= 75
+        * Developer da Rete Sviluppo (172.28.5.10): Atteso 65-95
+        * Analyst da IP Esterno Whitelisted (172.28.1.100): Atteso 55-85
+        * Qualsiasi utente da IP Blacklisted (172.28.1.200): Atteso <= 15
+
+SEZIONE 4: Test RBAC - Role-Based Access Control
+    - Testa che l'accesso richieda SIA fiducia sufficiente CHE ruolo autorizzato
+    - Casi di test:
+        * A1: CEO accede ad audit: PERMESSO (ha ruolo admin + fiducia)
+        * B1: HR Manager accede ad audit: NEGATO (ruolo non autorizzato)
+        * B5: Sales Manager accede a employees: NEGATO (ruolo non in lista)
+        * A5: Sales Manager accede a customers: PERMESSO (ha ruolo)
+        * A7: Developer accede a projects: PERMESSO (ha ruolo)
+        * B8: Developer accede a customers: NEGATO (ruolo non in lista)
+        * A9: Analyst accede a customers: Dipende dal trust (>= 60)
+        * B3: Developer accede ad audit: NEGATO (non autorizzato)
+
+SEZIONE 5: Test Sicurezza di Rete (Firewall L3/L7)
+    - Testa il filtraggio basato su IP a Livello 3 e Livello 7
+    - Casi di test:
+        * Firewall L3: Verifica IP in blacklist (172.28.1.200) -> BLOCCATO
+        * Firewall L3: Verifica IP in whitelist (172.28.1.100) -> PERMESSO
+        * E2E: Firewall Proxy raggiungibile (porta 8081)
+        * Policy: Richiesta da IP in blacklist valutata e negata dal PDP
+
+SEZIONE 6: Test Intrusion Detection System (Snort)
+    - Testa l'ispezione profonda dei pacchetti e il rilevamento attacchi
+    - Tipi di attacco testati:
+        * SQL Injection: SELECT * FROM users WHERE id=1 OR 1=1; DROP TABLE
+        * Cross-Site Scripting (XSS): <script>alert(document.cookie)</script>
+        * Path Traversal: /../../../etc/passwd
+    - Test End-to-End:
+        * Tentativo SQL Injection attraverso il PEP
+
+SEZIONE 7: Impatto del Trust Score sull'Accesso
+    - Testa come il trust score influenza le decisioni di accesso
+    - Casi di test:
+        * CTO da IP esterno sconosciuto (172.28.1.150) accede ad audit:
+          NEGATO (trust score sotto soglia 80 richiesta per audit)
+        * CEO dalla rete interna (172.28.2.30) accede a stats:
+          PERMESSO (trust score sufficiente)
+
+
+OUTPUT ATTESO
+---------------
+Se tutti i servizi funzionano correttamente:
+
+    Test Totali: ~30
+    Passati: ~30
+    Falliti: 0
+
+    ==============================================================
+       TUTTI I TEST PASSATI - Architettura Zero Trust Funzionante
+    ==============================================================
+
+NOTA: Alcuni test possono avere
+risultati variabili in base allo stato dinamico del sistema. 
+Alcuni esiti FALLITO possono dipendere da un basso trust score dovuto 
+dai diversi test eseguiti sull'IDS (penalita' dell'anomaly score).
+
+ALCUNI PROBLEMI
+---------------
+Se i test falliscono:
+
+1. Servizi non pronti:
+   - Attendere 2-3 minuti dopo docker-compose up
+   - Controllare: docker-compose ps (container "Up" o "healthy")
+
+2. Autenticazione Keycloak fallisce:
+   - Verificare completamento keycloak-init: docker logs keycloak-init
+   - Controllare accessibilita' Keycloak: curl http://localhost:8180/realms/techcorp
+
+3. Test IDS falliscono:
+   - Controllare esecuzione Snort: curl http://localhost:9090/health
+   - Visualizzare log Snort: docker logs snort-ids
+
+4. Firewall non risponde:
+   - Verificare IPTables: curl http://localhost:8888/health
+   - Verificare Firewall Proxy: curl http://localhost:8081/
+
+
+PRINCIPI ZERO TRUST
+----------------------------------
+1. NON FIDARSI MAI, VERIFICARE SEMPRE
+
+2. ACCESSO CON PRIVILEGIO MINIMO
+
+3. ASSUMERE LA VIOLAZIONE
+
+4. VERIFICA CONTINUA
+
+
+ANALISI AGGIUNTIVE
+--------------------
+
+- Console Admin Keycloak: http://localhost:8180/admin
   Login: admin / TechCorp2024!
 
-- Keycloak Admin Console: http://localhost:8180/admin
-  Login: admin / TechCorp2024!
-
-- View IDS Rules:
+- Visualizza Regole IDS:
   curl http://localhost:9090/rules | python3 -m json.tool
 
-- View Firewall Status:
+- Visualizza Stato Firewall:
   curl http://localhost:8888/status | python3 -m json.tool
 
-- View PDP Policies:
+- Visualizza Policy PDP:
   curl http://localhost:5000/policies | python3 -m json.tool
 
 
-TEST USERS AVAILABLE
+UTENTI TEST DISPONIBILI
 --------------------
-| Username    | Role          | Password      |
+| Username    | Ruolo         | Password      |
 |-------------|---------------|---------------|
 | m.rossi     | CEO           | Ceo2024!      |
 | l.bianchi   | CTO           | Cto2024!      |
@@ -193,19 +183,13 @@ TEST USERS AVAILABLE
 | s.ricci     | Analyst       | Analyst2024!  |
 
 
-NETWORK CONFIGURATION
+CONFIGURAZIONE RETE
 ---------------------
-| Network       | Subnet          | Trust Bonus |
-|---------------|-----------------|-------------|
-| Production    | 172.28.4.0/24   | +30         |
-| Development   | 172.28.5.0/24   | +25         |
-| Internal      | 172.28.2.0/24   | +20         |
-| DMZ           | 172.28.3.0/24   | +15         |
-| External WL   | 172.28.1.100    | -15         |
-| External      | 172.28.1.x      | -40         |
-| Blacklisted   | 172.28.1.200    | BLOCKED     |
-
-
-================================================================================
-                         End of Instructions
-================================================================================
+| Rete            | Sottorete       | Descrizione             |
+|-----------------|-----------------|-------------------------|
+| Produzione      | 172.28.4.0/24   | Trust piu' alto         |
+| Sviluppo        | 172.28.5.0/24   | Trust alto              |
+| Interna         | 172.28.2.0/24   | Trust medio             |
+| DMZ             | 172.28.3.0/24   | Trust ridotto           |
+| Esterna WL      | 172.28.1.100    | Whitelist esterna       |
+| Blacklistata    | 172.28.1.200    | BLOCCATA (trust <= 15)  |
