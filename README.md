@@ -1052,5 +1052,5 @@ index=zerotrust sourcetype=snort_ids action=block
 
 ---
 
-*Documento redatto per il corso di Sicurezza delle Reti*  
+*Documento redatto per il corso di ADVANCED CYBERSECURITY FOR IT*  
 *Versione 1.0 - Gennaio 2025*
