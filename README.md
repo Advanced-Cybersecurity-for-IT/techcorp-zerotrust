@@ -1000,10 +1000,6 @@ techcorp-zerotrust/
 │   ├── external-blocked/
 │   └── malicious-host/
 │
-├── 🎬 resources/                    # Video demo scenari di test
-│   ├── Rete-Interna->DBMS.mp4
-│   ├── Rete-Esterna->DBMS.mp4
-│   └── Rete-Interna->Rete-Esterna.mp4
 │
 ├── 🐙 docker-compose.yaml
 ├── 🧪 test_scenarios.sh
