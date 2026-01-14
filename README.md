@@ -7,6 +7,10 @@
 
 ## Abstract
 
+https://github.com/user-attachments/assets/c5cf6a2e-a8a9-410f-a259-97ca1a0db0f3
+
+
+
 Il presente progetto implementa un'architettura **Zero Trust** completa per l'azienda fittizia TechCorp, seguendo le linee guida dello standard **NIST SP 800-207**. Il sistema realizza il paradigma *"Never Trust, Always Verify"* attraverso l'integrazione di componenti fondamentali: un **Policy Decision Point (PDP)** che calcola dinamicamente un Trust Score basato su quattro fattori (ruolo utente, storico comportamentale, anomalie di sicurezza, contesto della richiesta), un **Policy Enforcement Point (PEP)** come gateway applicativo, un sistema di **Intrusion Detection** basato su Snort con 36 regole personalizzate, e un firewall multi-livello che opera sia a Layer 3 (iptables) che a Layer 7 (Squid).
 
 L'architettura è stata progettata con un approccio **Defense in Depth**, dove ogni richiesta attraversa multiple fasi di verifica prima di accedere alle risorse protette. Il sistema integra **Splunk** come SIEM per il logging centralizzato e l'analisi storica, **Keycloak** per l'identity management con autenticazione JWT, e **PostgreSQL** come database aziendale contenente dati sensibili.
