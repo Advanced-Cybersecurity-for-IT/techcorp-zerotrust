@@ -686,7 +686,9 @@ Di seguito sono presentati i video dimostrativi che illustrano il funzionamento 
 
 #### 📹 Scenario 1: Accesso dalla Rete Interna al Database
 
-<video src="resources/Rete-Interna->DBMS.mp4" controls width="100%"></video>
+<video src="resources/Rete-Interna->DBMS.mp4.mp4" controls="controls" style="max-width: 100%;">
+  Il tuo browser non supporta il tag video.
+</video>
 
 **Cosa succede in questo video:**
 
