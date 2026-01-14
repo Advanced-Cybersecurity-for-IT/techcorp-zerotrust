@@ -7,10 +7,6 @@
 
 ## Abstract
 
-https://github.com/user-attachments/assets/c5cf6a2e-a8a9-410f-a259-97ca1a0db0f3
-
-
-
 Il presente progetto implementa un'architettura **Zero Trust** completa per l'azienda fittizia TechCorp, seguendo le linee guida dello standard **NIST SP 800-207**. Il sistema realizza il paradigma *"Never Trust, Always Verify"* attraverso l'integrazione di componenti fondamentali: un **Policy Decision Point (PDP)** che calcola dinamicamente un Trust Score basato su quattro fattori (ruolo utente, storico comportamentale, anomalie di sicurezza, contesto della richiesta), un **Policy Enforcement Point (PEP)** come gateway applicativo, un sistema di **Intrusion Detection** basato su Snort con 36 regole personalizzate, e un firewall multi-livello che opera sia a Layer 3 (iptables) che a Layer 7 (Squid).
 
 L'architettura è stata progettata con un approccio **Defense in Depth**, dove ogni richiesta attraversa multiple fasi di verifica prima di accedere alle risorse protette. Il sistema integra **Splunk** come SIEM per il logging centralizzato e l'analisi storica, **Keycloak** per l'identity management con autenticazione JWT, e **PostgreSQL** come database aziendale contenente dati sensibili.
@@ -690,7 +686,10 @@ Di seguito sono presentati i video dimostrativi che illustrano il funzionamento 
 
 #### 📹 Scenario 1: Accesso dalla Rete Interna al Database
 
-<video src="rete-interna-dbms.mp4" controls width="100%"></video>
+
+https://github.com/user-attachments/assets/7abedd12-9639-4e9b-951e-37550c8f9bdc
+
+
 
 **Cosa succede in questo video:**
 
@@ -714,7 +713,10 @@ Di seguito sono presentati i video dimostrativi che illustrano il funzionamento 
 
 #### 📹 Scenario 2: Tentativo di Accesso dalla Rete Esterna al Database
 
-<video src="resources/Rete-Esterna->DBMS.mp4" controls width="100%"></video>
+
+https://github.com/user-attachments/assets/8fb2df13-3802-4204-a9c6-49121da5b212
+
+
 
 **Cosa succede in questo video:**
 
@@ -745,7 +747,10 @@ Di seguito sono presentati i video dimostrativi che illustrano il funzionamento 
 
 #### 📹 Scenario 3: Comunicazione dalla Rete Interna verso la Rete Esterna
 
-<video src="resources/Rete-Interna->Rete-Esterna.mp4" controls width="100%"></video>
+
+
+https://github.com/user-attachments/assets/4c081787-5e64-4855-a8e4-7b7c605e8595
+
 
 **Cosa succede in questo video:**
 
