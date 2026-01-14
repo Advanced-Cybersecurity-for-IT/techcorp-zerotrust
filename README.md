@@ -613,6 +613,9 @@ alert tcp any any -> any any (msg:"TRAV-001 Path Traversal - Dot Dot Slash";
 
 ### 6.1 Piano di Test
 
+> [!NOTE]
+> Il seguente elenco riporta solo gli scenari di test principali. Per visualizzare l'elenco completo dei test effettuati, consultare il file [TEST_SCENARIOS_README.txt](TEST_SCENARIOS_README.txt) o il relativo script eseguibile [test_scenarios.sh](test_scenarios.sh).
+
 | ID | Categoria | Descrizione | Risultato Atteso |
 |----|-----------|-------------|------------------|
 | T01 | Autenticazione | Login con credenziali valide | Token JWT rilasciato |
