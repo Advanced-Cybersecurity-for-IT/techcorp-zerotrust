@@ -1,31 +1,31 @@
 #!/bin/sh
 # ============================================================================
-# IPTABLES FIREWALL - Real Network Level Packet Filtering
+# IPTABLES FIREWALL - Filtraggio Pacchetti Reale a Livello di Rete
 # TechCorp Zero Trust Architecture
 # ============================================================================
-# This script sets up:
-# 1. Real iptables rules to block blacklisted IPs at network level
-# 2. An HTTP proxy to forward allowed traffic to Squid (L7) with X-Real-IP header
+# Questo script configura:
+# 1. Regole iptables reali per bloccare IP in blacklist a livello di rete
+# 2. Un proxy HTTP per inoltrare traffico consentito a Squid (L7)
 # ============================================================================
 
 set -e
 
 echo "=============================================="
-echo " IPTABLES FIREWALL - Network Level Security"
+echo " IPTABLES FIREWALL - Sicurezza a Livello di Rete"
 echo " TechCorp Zero Trust Architecture"
 echo "=============================================="
 
-# Configuration - Forward to Squid (L7 firewall) instead of directly to PEP
+# Configurazione - Inoltra a Squid
 UPSTREAM_HOST="${UPSTREAM_HOST:-squid-proxy}"
 UPSTREAM_IP="${UPSTREAM_IP:-172.28.3.5}"
 UPSTREAM_PORT="${UPSTREAM_PORT:-3128}"
 LISTEN_PORT="${LISTEN_PORT:-8080}"
 STATUS_PORT="${STATUS_PORT:-8888}"
 
-# Blacklisted IPs (blocked at network level)
+# IP in Blacklist
 BLACKLIST="172.28.1.200 172.28.1.250 172.28.1.60"
 
-# Whitelisted external IPs (allowed through firewall)
+# IP esterni in Whitelist
 WHITELIST="172.28.1.100 172.28.1.50"
 
 echo "[*] Configuration:"
@@ -37,7 +37,7 @@ echo "    Whitelist: ${WHITELIST}"
 echo ""
 
 # ============================================================================
-# STEP 1: Flush existing rules
+# Rimozione regole esistenti
 # ============================================================================
 echo "[1/4] Flushing existing iptables rules..."
 iptables -F
@@ -46,7 +46,7 @@ iptables -X 2>/dev/null || true
 echo "      Rules flushed"
 
 # ============================================================================
-# STEP 2: Set default policies
+# Set delle policy predefinite
 # ============================================================================
 echo "[2/4] Setting default policies..."
 iptables -P INPUT ACCEPT
@@ -55,55 +55,52 @@ iptables -P FORWARD ACCEPT
 echo "      Policies set"
 
 # ============================================================================
-# STEP 3: Create firewall rules (INPUT chain - block at connection level)
+# Creazione regole firewall
 # ============================================================================
 echo "[3/4] Creating firewall rules..."
 
-# Allow loopback
 iptables -A INPUT -i lo -j ACCEPT
 
-# Allow established connections
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# ---- BLACKLIST RULES (DROP connections from blacklisted IPs) ----
-echo "      [+] Configuring blacklist rules (INPUT chain)..."
+# ---- REGOLE BLACKLIST ----
+echo "      [+] Configuring blacklist rules..."
 for ip in $BLACKLIST; do
-    # Log blacklisted connection attempts
+    # Log tentativi connessione in blacklist
     iptables -A INPUT -s $ip -p tcp --dport $LISTEN_PORT -j LOG --log-prefix "IPTABLES-BLACKLIST-DROP: " --log-level 4
-    # Drop connections from blacklisted IPs to the proxy port
+    # Scarta connessioni da IP in blacklist alla porta proxy
     iptables -A INPUT -s $ip -p tcp --dport $LISTEN_PORT -j DROP
     echo "          BLOCK: $ip (cannot connect to port $LISTEN_PORT)"
 done
 
-# Allow connections to status API from anywhere (for monitoring)
 iptables -A INPUT -p tcp --dport $STATUS_PORT -j ACCEPT
 echo "      [+] Status API port $STATUS_PORT: ALLOW ALL"
 
-# ---- WHITELIST: Explicitly allow whitelisted IPs ----
+# ---- WHITELIST ----
 echo "      [+] Configuring whitelist rules..."
 for ip in $WHITELIST; do
     iptables -A INPUT -s $ip -p tcp --dport $LISTEN_PORT -j ACCEPT
     echo "          ALLOW: $ip (can connect to port $LISTEN_PORT)"
 done
 
-# Log other connection attempts to proxy port
+# Log altri tentativi di connessione alla porta proxy
 iptables -A INPUT -p tcp --dport $LISTEN_PORT -j LOG --log-prefix "IPTABLES-UNKNOWN: " --log-level 6
 
 # ============================================================================
-# STEP 4: Display final rules
+# Completamento configurazione
 # ============================================================================
 echo "[4/4] Firewall configuration complete!"
 echo ""
-echo "=== INPUT CHAIN (Connection Filtering) ==="
+echo "=== INPUT CHAIN ==="
 iptables -L INPUT -n -v --line-numbers
 echo ""
 echo "=============================================="
-echo " Firewall ACTIVE - Blocking at Network Level"
-echo " Proxy will forward allowed traffic to Squid (L7)"
+echo " Firewall ATTIVO - Blocco a Livello di Rete"
+echo " Il proxy inoltrerà il traffico consentito a Squid (L7)"
 echo "=============================================="
 
 # ============================================================================
-# Export configuration for Python scripts
+# Esporta configurazione per script Python
 # ============================================================================
 export BLACKLIST="$BLACKLIST"
 export WHITELIST="$WHITELIST"
@@ -113,6 +110,6 @@ export LISTEN_PORT="$LISTEN_PORT"
 export STATUS_PORT="$STATUS_PORT"
 
 # ============================================================================
-# Start the firewall proxy and status API
+# Avvia il proxy firewall
 # ============================================================================
 exec python3 /app/firewall_proxy.py

@@ -1,17 +1,17 @@
 #!/bin/bash
 # ============================================================================
-# SQUID PROXY ENTRYPOINT
-# TechCorp Zero Trust Architecture - Layer 7 Application Firewall
+# ENTRYPOINT PROXY SQUID
+# TechCorp Zero Trust Architecture - Firewall Applicativo Layer 7
 # ============================================================================
 
 set -e
 
 echo "=============================================="
-echo " SQUID PROXY - Layer 7 Application Firewall"
+echo " SQUID PROXY - Firewall Applicativo Layer 7"
 echo " TechCorp Zero Trust Architecture"
 echo "=============================================="
 
-# Configuration
+# Configurazione
 PEP_HOST="${PEP_HOST:-pep}"
 PEP_PORT="${PEP_PORT:-8080}"
 SQUID_PORT="${SQUID_PORT:-3128}"
@@ -24,18 +24,17 @@ echo "    Health Port: ${HEALTH_PORT}"
 echo ""
 
 # ----------------------------------------------------------------------------
-# Update squid.conf with environment variables
+# Aggiornamento squid.conf con variabili d'ambiente
 # ----------------------------------------------------------------------------
 echo "[1/5] Configuring Squid..."
 
-# Update cache_peer with actual PEP host/port
 sed -i "s/cache_peer pep parent 8080/cache_peer ${PEP_HOST} parent ${PEP_PORT}/" /etc/squid/squid.conf
 sed -i "s/defaultsite=pep/defaultsite=${PEP_HOST}/" /etc/squid/squid.conf
 
 echo "      Cache peer set to: ${PEP_HOST}:${PEP_PORT}"
 
 # ----------------------------------------------------------------------------
-# Initialize Squid cache directories
+# Inizializzazione directory cache Squid
 # ----------------------------------------------------------------------------
 echo "[2/5] Initializing cache directories..."
 mkdir -p /var/run/squid
@@ -44,7 +43,7 @@ squid -z -N 2>/dev/null || true
 echo "      Cache initialized"
 
 # ----------------------------------------------------------------------------
-# Verify configuration
+# Verifica configurazione
 # ----------------------------------------------------------------------------
 echo "[3/5] Verifying configuration..."
 if squid -k parse 2>&1; then
@@ -56,11 +55,11 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-# Start health check server in background
+# Avvio server health check in background
 # ----------------------------------------------------------------------------
 echo "[4/5] Starting health check server on port ${HEALTH_PORT}..."
 
-# Python-based health check server
+# Server health check
 python3 << 'HEALTH_SERVER' &
 import http.server
 import json
@@ -74,7 +73,7 @@ class HealthHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/health':
-            # Check if Squid process is running
+            # Controlla se Squid in esecuzione
             try:
                 subprocess.check_output(['pgrep', 'squid'])
                 status = 'healthy'
@@ -104,7 +103,7 @@ HEALTH_SERVER
 echo "      Health server started"
 
 # ----------------------------------------------------------------------------
-# Display blocked domains
+# Visualizzazione domini bloccati
 # ----------------------------------------------------------------------------
 echo "[5/5] Blocked domains loaded:"
 grep -v "^#" /etc/squid/blocked_domains.txt | grep -v "^$" | head -5
@@ -128,6 +127,6 @@ echo "=============================================="
 echo ""
 
 # ----------------------------------------------------------------------------
-# Start Squid in foreground
+# Avvio Squid
 # ----------------------------------------------------------------------------
 exec squid -N -d 1

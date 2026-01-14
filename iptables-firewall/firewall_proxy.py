@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 """
-IPTABLES FIREWALL - HTTP Proxy with Real-IP Preservation
+IPTABLES FIREWALL - Proxy HTTP
 TechCorp Zero Trust Architecture
 
-This script:
-1. Acts as an HTTP reverse proxy to Squid (L7 firewall)
-2. Preserves original client IP via X-Real-IP header
-3. Provides status/monitoring endpoints
-4. Works in conjunction with iptables rules for network-level blocking
+Questo script:
+1. Agisce come reverse proxy HTTP verso Squid (firewall L7)
+2. Preserva l'IP originale del client
+3. Fornisce endpoint di monitoraggio
+4. Utilizza le regole iptables per il blocco a livello di rete
 
-Traffic flow: External Host -> iptables (L3) -> Squid (L7) -> PEP
-
-Note: Blacklisted IPs are blocked by iptables at the network level
-before they can even reach this proxy.
 """
 
 import os
@@ -25,7 +21,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 import http.client
 
-# Configuration from environment - Forward to Squid (L7) instead of PEP
+# Configurazione dall'ambiente - Inoltra a Squid (L7)
 UPSTREAM_IP = os.environ.get('UPSTREAM_IP', '172.28.3.5')
 UPSTREAM_PORT = int(os.environ.get('UPSTREAM_PORT', 3128))
 LISTEN_PORT = int(os.environ.get('LISTEN_PORT', 8080))
@@ -34,7 +30,7 @@ STATUS_PORT = int(os.environ.get('STATUS_PORT', 8888))
 BLACKLIST = os.environ.get('BLACKLIST', '172.28.1.200 172.28.1.250 172.28.1.60').split()
 WHITELIST = os.environ.get('WHITELIST', '172.28.1.100 172.28.1.50').split()
 
-# Statistics
+# Statistiche
 stats = {
     'requests_forwarded': 0,
     'requests_blocked': 0,
@@ -47,22 +43,21 @@ stats_lock = threading.Lock()
 
 
 def log(message, level='INFO'):
-    """Logging with timestamp"""
+    """Logging con timestamp"""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{timestamp}] [{level}] {message}")
 
 
 def get_client_ip(handler):
-    """Extract client IP from connection"""
+    """Estrae l'IP client dalla connessione"""
     client_ip = handler.client_address[0]
-    # Remove IPv6 prefix if present
     if client_ip.startswith('::ffff:'):
         client_ip = client_ip[7:]
     return client_ip
 
 
 def get_iptables_rules():
-    """Get current iptables rules"""
+    """Ottiene le regole iptables correnti"""
     try:
         result = subprocess.check_output(
             ['iptables', '-L', 'INPUT', '-n', '-v', '--line-numbers'],
@@ -74,7 +69,7 @@ def get_iptables_rules():
 
 
 def get_iptables_stats():
-    """Parse iptables statistics"""
+    """Analizza le statistiche di iptables"""
     try:
         output = subprocess.check_output(
             ['iptables', '-L', 'INPUT', '-n', '-v', '-x'],
@@ -94,52 +89,50 @@ def get_iptables_stats():
 
 
 # ============================================================================
-# HTTP Proxy Handler
+# Gestore Proxy HTTP
 # ============================================================================
 class ProxyHandler(BaseHTTPRequestHandler):
-    """Reverse proxy that forwards requests to PEP with X-Real-IP header"""
+    """Reverse proxy che inoltra le richieste al PEP"""
 
     def log_message(self, format, *args):
-        """Custom logging"""
+        """Logging personalizzato"""
         client_ip = get_client_ip(self)
         log(f"[PROXY] {client_ip} - {format % args}")
 
     def do_proxy(self):
-        """Forward request to PEP"""
+        """Inoltra la richiesta al PEP"""
         client_ip = get_client_ip(self)
 
-        # Note: If we reach here, the client passed iptables filtering
-        # (blacklisted IPs are DROPped at network level)
+        # A questo punto il client ha superato il filtro iptables
 
         try:
-            # Read request body if present
+            # Legge il corpo della richiesta
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length) if content_length > 0 else None
 
-            # Connect to Squid (upstream L7 firewall)
+            # Connessione a Squid
             conn = http.client.HTTPConnection(UPSTREAM_IP, UPSTREAM_PORT, timeout=30)
 
-            # Build headers, adding X-Real-IP
+            # Costruisce gli header, aggiungendo l'IP reale
             headers = {}
             for key, value in self.headers.items():
-                # Skip hop-by-hop headers
                 if key.lower() not in ['connection', 'keep-alive', 'transfer-encoding']:
                     headers[key] = value
 
-            # Add/override IP headers for PEP to know original client
+            # Aggiunge IP originale
             headers['X-Real-IP'] = client_ip
             headers['X-Forwarded-For'] = client_ip
             headers['X-Forwarded-Proto'] = 'http'
             headers['X-Forwarded-By'] = 'iptables-firewall'
 
-            # Forward request
+            # Inoltro richiesta
             conn.request(self.command, self.path, body=body, headers=headers)
 
-            # Get response
+            # Lettrua risposta
             response = conn.getresponse()
             response_body = response.read()
 
-            # Send response back to client
+            # Invio risposta al client
             self.send_response(response.status)
             for key, value in response.getheaders():
                 if key.lower() not in ['transfer-encoding', 'connection']:
@@ -147,7 +140,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(response_body)
 
-            # Update statistics
+            # Update statistiche
             with stats_lock:
                 stats['requests_forwarded'] += 1
                 stats['bytes_transferred'] += len(response_body)
@@ -187,13 +180,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 
 # ============================================================================
-# Status API Handler
+# Gestore API di stato
 # ============================================================================
 class StatusHandler(BaseHTTPRequestHandler):
-    """Status and monitoring API"""
+    """API di stato e monitoraggio"""
 
     def log_message(self, *args):
-        pass  # Suppress default logging
+        pass  # No log
 
     def send_json(self, data, status=200):
         self.send_response(status)
@@ -371,10 +364,10 @@ class StatusHandler(BaseHTTPRequestHandler):
 
 
 # ============================================================================
-# Main: Run both servers
+# Main: Esegue entrambi i server
 # ============================================================================
 def run_proxy_server():
-    """Run the HTTP proxy server"""
+    """Esegue il server proxy HTTP"""
     server = HTTPServer(('0.0.0.0', LISTEN_PORT), ProxyHandler)
     log(f"[PROXY] HTTP Proxy listening on port {LISTEN_PORT}")
     log(f"[PROXY] Forwarding to Squid (L7) at {UPSTREAM_IP}:{UPSTREAM_PORT}")
@@ -382,7 +375,7 @@ def run_proxy_server():
 
 
 def run_status_server():
-    """Run the status API server"""
+    """Esegue il server API di stato"""
     server = HTTPServer(('0.0.0.0', STATUS_PORT), StatusHandler)
     log(f"[STATUS] Status API listening on port {STATUS_PORT}")
     server.serve_forever()
@@ -397,9 +390,9 @@ if __name__ == '__main__':
     print(f" Upstream (Squid L7): {UPSTREAM_IP}:{UPSTREAM_PORT}")
     print("=" * 60)
 
-    # Start status server in background thread
+    # Server di stato in thread background
     status_thread = threading.Thread(target=run_status_server, daemon=True)
     status_thread.start()
 
-    # Run proxy server in main thread
+    # Server proxy nel thread principale
     run_proxy_server()

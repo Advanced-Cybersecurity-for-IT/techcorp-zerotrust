@@ -1,10 +1,10 @@
 -- ============================================================================
--- TechCorp Enterprise Database - Zero Trust Architecture
+-- Database Aziendale TechCorp - Zero Trust Architecture
 -- ============================================================================
 
 CREATE SCHEMA IF NOT EXISTS enterprise;
 
--- DEPARTMENTS
+-- DIPARTIMENTI
 CREATE TABLE enterprise.departments (
     id SERIAL PRIMARY KEY,
     code VARCHAR(10) UNIQUE NOT NULL,
@@ -21,7 +21,7 @@ INSERT INTO enterprise.departments (code, name, budget) VALUES
 ('FIN', 'Finance', 300000.00),
 ('OPS', 'Operations', 450000.00);
 
--- EMPLOYEES
+-- DIPENDENTI
 CREATE TABLE enterprise.employees (
     id SERIAL PRIMARY KEY,
     employee_code VARCHAR(20) UNIQUE NOT NULL,
@@ -47,7 +47,7 @@ INSERT INTO enterprise.employees (employee_code, first_name, last_name, email, p
 ('TC007', 'Paolo', 'Marino', 'p.marino@techcorp.local', '+39 02 1234007', 'IT', 'Junior Developer', '2021-09-01', 38000.00),
 ('TC008', 'Elena', 'Greco', 'e.greco@techcorp.local', '+39 02 1234008', 'Sales', 'Sales Representative', '2021-03-15', 42000.00);
 
--- CUSTOMERS
+-- CLIENTI
 CREATE TABLE enterprise.customers (
     id SERIAL PRIMARY KEY,
     customer_code VARCHAR(20) UNIQUE NOT NULL,
@@ -69,7 +69,7 @@ INSERT INTO enterprise.customers (customer_code, company_name, contact_name, ema
 ('CL004', 'Smart Solutions Ltd', 'John Smith', 'j.smith@smartsol.co.uk', '+44 20 12345678', 'London', 'UK', 200000.00),
 ('CL005', 'TechVenture S.A.', 'Pierre Dupont', 'p.dupont@techventure.fr', '+33 1 23456789', 'Paris', 'France', 180000.00);
 
--- PRODUCTS
+-- PRODOTTI
 CREATE TABLE enterprise.products (
     id SERIAL PRIMARY KEY,
     product_code VARCHAR(20) UNIQUE NOT NULL,
@@ -87,7 +87,7 @@ INSERT INTO enterprise.products (product_code, name, category, unit_price, stock
 ('PRD004', 'API Gateway Pro', 'Software', 6500.00, 999),
 ('PRD005', 'DevOps Automation Suite', 'DevOps', 9000.00, 999);
 
--- ORDERS
+-- ORDINI
 CREATE TABLE enterprise.orders (
     id SERIAL PRIMARY KEY,
     order_number VARCHAR(20) UNIQUE NOT NULL,
@@ -107,7 +107,7 @@ INSERT INTO enterprise.orders (order_number, customer_id, order_date, status, to
 ('ORD-2024-006', 1, '2024-03-10', 'pending', 93000.00),
 ('ORD-2024-007', 2, '2024-03-20', 'pending', 28500.00);
 
--- PROJECTS
+-- PROGETTI
 CREATE TABLE enterprise.projects (
     id SERIAL PRIMARY KEY,
     project_code VARCHAR(20) UNIQUE NOT NULL,
@@ -127,7 +127,7 @@ INSERT INTO enterprise.projects (project_code, name, client_id, start_date, end_
 ('PRJ-004', 'Mobile App Development', 3, '2024-03-01', '2024-09-30', 180000.00, 'planning', 23),
 ('PRJ-005', 'Data Warehouse Modernization', 5, '2024-02-15', '2024-07-31', 150000.00, 'completed', 100);
 
--- AUDIT LOG
+-- LOG AUDIT
 CREATE TABLE enterprise.audit_log (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -139,13 +139,13 @@ CREATE TABLE enterprise.audit_log (
     trust_score DECIMAL(5,2)
 );
 
--- INDEXES
+-- INDICI
 CREATE INDEX idx_employees_department ON enterprise.employees(department);
 CREATE INDEX idx_orders_status ON enterprise.orders(status);
 CREATE INDEX idx_projects_status ON enterprise.projects(status);
 CREATE INDEX idx_audit_timestamp ON enterprise.audit_log(timestamp);
 
--- GRANTS
+-- PERMESSI
 GRANT ALL PRIVILEGES ON SCHEMA enterprise TO techcorp_user;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA enterprise TO techcorp_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA enterprise TO techcorp_user;

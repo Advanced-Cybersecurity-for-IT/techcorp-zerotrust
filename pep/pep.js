@@ -3,7 +3,7 @@
  * PEP - Policy Enforcement Point
  * Zero Trust Architecture - TechCorp
  * ============================================================================
- * Il PEP è il gateway che:
+ * Il PEP funge da gateway che:
  * 1. Riceve le richieste dagli utenti
  * 2. Consulta il PDP per la decisione
  * 3. Se approvato, accede al DBMS come client
@@ -21,12 +21,12 @@ const jwksRsa = require('jwks-rsa');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Keycloak configuration
+// Configurazione Keycloak
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://keycloak:8080';
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'techcorp';
 
 // ============================================================================
-// CONFIGURATION
+// CONFIGURAZIONE
 // ============================================================================
 const PDP_URL = process.env.PDP_URL || 'http://pdp:5000';
 const SNORT_IDS_URL = process.env.SNORT_IDS_URL || 'http://snort-ids:9090';
@@ -38,14 +38,14 @@ const DB_CONFIG = {
     database: process.env.DB_NAME || 'techcorp_db'
 };
 
-// Database connection pool
+// Pool connessioni Database
 const pool = new Pool(DB_CONFIG);
 
 app.use(express.json());
 app.use(morgan('combined'));
 
 // ============================================================================
-// JWKS CLIENT: Fetches public keys from Keycloak
+// CLIENT JWKS: Recupero chiavi pubbliche da Keycloak
 // ============================================================================
 const jwksClient = jwksRsa({
     jwksUri: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`,
@@ -56,7 +56,7 @@ const jwksClient = jwksRsa({
     jwksRequestsPerMinute: 10
 });
 
-// Helper function to get signing key
+// Ottiene la signing key
 function getSigningKey(header, callback) {
     jwksClient.getSigningKey(header.kid, (err, key) => {
         if (err) {
@@ -69,14 +69,13 @@ function getSigningKey(header, callback) {
     });
 }
 
-// Allowed issuers (internal Docker hostname and external localhost access)
 const ALLOWED_ISSUERS = [
     `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,
     `http://localhost:8180/realms/${KEYCLOAK_REALM}`,
     `http://127.0.0.1:8180/realms/${KEYCLOAK_REALM}`
 ];
 
-// Promisified JWT verification
+// Verifica JWT
 function verifyToken(token) {
     return new Promise((resolve, reject) => {
         jwt.verify(token, getSigningKey, {
@@ -93,7 +92,7 @@ function verifyToken(token) {
 }
 
 // ============================================================================
-// MIDDLEWARE: Extract and VERIFY user info from token
+// Estrae e VERIFICA info utente dal token
 // ============================================================================
 const extractUserInfo = async (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -107,7 +106,6 @@ const extractUserInfo = async (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         try {
-            // Cryptographically verify the token against Keycloak's public key
             const decoded = await verifyToken(token);
 
             userInfo.username = decoded.preferred_username || decoded.sub || 'unknown';
@@ -119,7 +117,7 @@ const extractUserInfo = async (req, res, next) => {
             console.log(`[PEP] Token VERIFIED for user: ${userInfo.username}, roles: ${userInfo.roles.join(', ')}`);
         } catch (e) {
             console.error(`[PEP] Token verification FAILED: ${e.message}`);
-            // Token provided but invalid - reject the request
+            // Token non valido - rifiuto richiesta
             return res.status(401).json({
                 error: 'Invalid or expired token',
                 details: e.message,
@@ -170,7 +168,7 @@ async function analyzeWithSnort(req) {
         return { blocked: false, alerts: [] };
     } catch (error) {
         console.error('[PEP] Snort IDS error:', error.message);
-        // Fail-open for IDS (don't block if IDS unavailable)
+        // IDS non disponbile
         return { blocked: false, alerts: [], error: error.message };
     }
 }
@@ -180,7 +178,7 @@ async function analyzeWithSnort(req) {
 // ============================================================================
 async function consultPDP(username, roles, sourceIP, resourceType, action) {
     try {
-        // Determine network type based on IP
+        // Determina tipo di rete basato sull'IP
         let networkType = 'unknown';
         if (sourceIP.startsWith('172.28.4.')) networkType = 'production';
         else if (sourceIP.startsWith('172.28.5.')) networkType = 'development';
@@ -226,7 +224,7 @@ async function consultPDP(username, roles, sourceIP, resourceType, action) {
         return { decision: 'deny', reason: 'PDP unavailable' };
     } catch (error) {
         console.error('[PEP] PDP consultation error:', error.message);
-        // Fail-safe: deny if PDP is unavailable
+        // Nega accesso se PDP non disponibile
         return { decision: 'deny', reason: 'PDP error: ' + error.message };
     }
 }
@@ -245,10 +243,9 @@ async function queryDatabase(query, params = []) {
 }
 
 // ============================================================================
-// MIDDLEWARE: IDS Analysis (Snort)
+// Analisi Snort IDS
 // ============================================================================
 const idsAnalysis = async (req, res, next) => {
-    // Skip health checks
     if (req.path === '/health') {
         return next();
     }
@@ -257,7 +254,7 @@ const idsAnalysis = async (req, res, next) => {
         const idsResult = await analyzeWithSnort(req);
         req.idsResult = idsResult;
         
-        // Block if IDS detected malicious traffic
+        // Blocca se IDS rileva traffico malevolo
         if (idsResult.blocked) {
             console.log(`[PEP] Request BLOCKED by IDS - ${idsResult.alerts_count} alerts`);
             return res.status(403).json({
@@ -271,30 +268,28 @@ const idsAnalysis = async (req, res, next) => {
             });
         }
     } catch (e) {
-        // Continue even if IDS fails
+        // Continua se IDS fallisce
         console.error('[PEP] IDS middleware error:', e.message);
     }
     
     next();
 };
 
-// Apply IDS middleware to all API routes
+// Applica check dell'IDS a tutte le rotte API
 app.use('/api', idsAnalysis);
 
 // ============================================================================
 // API ENDPOINTS
 // ============================================================================
 
-// Helper function to get real client IP
+// Get IP client reale
 function getClientIP(req) {
-    // Priority: X-Real-IP > X-Forwarded-For > req.ip
     const realIP = req.headers['x-real-ip'];
     const forwardedFor = req.headers['x-forwarded-for'];
     const directIP = req.ip || req.connection?.remoteAddress;
     
     let clientIP = realIP || (forwardedFor ? forwardedFor.split(',')[0].trim() : null) || directIP || 'unknown';
     
-    // Remove IPv6 prefix if present
     if (clientIP.startsWith('::ffff:')) {
         clientIP = clientIP.substring(7);
     }
@@ -304,12 +299,11 @@ function getClientIP(req) {
     return clientIP;
 }
 
-// Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'healthy', service: 'PEP', timestamp: new Date().toISOString() });
 });
 
-// Get trust score
+// Lettura trust score
 app.get('/api/trust-score', async (req, res) => {
     try {
         const sourceIP = getClientIP(req);
@@ -337,10 +331,10 @@ app.get('/api/trust-score', async (req, res) => {
 });
 
 // ============================================================================
-// RESOURCE ENDPOINTS (protetti da PDP)
+// ENDPOINTS RISORSE
 // ============================================================================
 
-// EMPLOYEES
+// DIPENDENTI
 app.get('/api/db/employees', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'employees', 'read');
@@ -357,7 +351,7 @@ app.get('/api/db/employees', async (req, res) => {
     }
 });
 
-// CUSTOMERS
+// CLIENTI
 app.get('/api/db/customers', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'customers', 'read');
@@ -374,7 +368,7 @@ app.get('/api/db/customers', async (req, res) => {
     }
 });
 
-// ORDERS
+// ORDINI
 app.get('/api/db/orders', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'orders', 'read');
@@ -396,7 +390,7 @@ app.get('/api/db/orders', async (req, res) => {
     }
 });
 
-// PROJECTS
+// PROGETTI
 app.get('/api/db/projects', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'projects', 'read');
@@ -413,7 +407,7 @@ app.get('/api/db/projects', async (req, res) => {
     }
 });
 
-// DEPARTMENTS
+// DIPARTIMENTI
 app.get('/api/db/departments', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'stats', 'read');
@@ -430,7 +424,7 @@ app.get('/api/db/departments', async (req, res) => {
     }
 });
 
-// PRODUCTS
+// PRODOTTI
 app.get('/api/db/products', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'stats', 'read');
@@ -447,7 +441,7 @@ app.get('/api/db/products', async (req, res) => {
     }
 });
 
-// STATS
+// STATISTICHE
 app.get('/api/db/stats', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'stats', 'read');
@@ -471,7 +465,7 @@ app.get('/api/db/stats', async (req, res) => {
     }
 });
 
-// AUDIT LOG (solo admin)
+// AUDIT LOG
 app.get('/api/db/audit', async (req, res) => {
     const sourceIP = getClientIP(req);
     const decision = await consultPDP(req.userInfo.username, req.userInfo.roles, sourceIP, 'audit', 'read');
@@ -489,7 +483,7 @@ app.get('/api/db/audit', async (req, res) => {
 });
 
 // ============================================================================
-// START SERVER
+// AVVIO SERVER
 // ============================================================================
 app.listen(PORT, '0.0.0.0', () => {
     console.log('============================================');

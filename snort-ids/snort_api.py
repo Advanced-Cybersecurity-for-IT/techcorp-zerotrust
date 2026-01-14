@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 ============================================================================
-SNORT IDS - Python API Wrapper
+SNORT IDS - API Python
 TechCorp Zero Trust Architecture
 ============================================================================
-This wrapper provides an HTTP API interface to the real Snort IDS engine.
-It receives packet data from PEP, creates pcap files using scapy,
-runs Snort for analysis, and returns alerts in JSON format.
+Fornisce un'interfaccia API HTTP per Snort IDS.
+Riceve dati pacchetto dal PEP, segue Snort per 
+l'analisi e restituisce alert in formato JSON.
 ============================================================================
 """
 
@@ -22,17 +22,16 @@ from flask import Flask, request, jsonify
 from threading import Lock
 import requests
 
-# Scapy imports
 from scapy.all import IP, TCP, Raw, wrpcap, Ether
 
-# Configuration
+# Configurazione
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [SNORT-API] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
 # ============================================================================
-# CONFIGURATION
+# CONFIGURAZIONE
 # ============================================================================
 SNORT_BIN = os.environ.get('SNORT_BIN', '/usr/sbin/snort')
 SNORT_CONF = os.environ.get('SNORT_CONF', '/etc/snort/snort.conf')
@@ -40,7 +39,6 @@ SPLUNK_HOST = os.environ.get('SPLUNK_HOST', 'splunk')
 SPLUNK_HEC_TOKEN = os.environ.get('SPLUNK_HEC_TOKEN', 'techcorp-hec-token-2024')
 IDS_MODE = os.environ.get('IDS_MODE', 'inline')
 
-# Thread-safe statistics
 stats_lock = Lock()
 stats = {
     'packets_analyzed': 0,
@@ -50,14 +48,13 @@ stats = {
     'start_time': datetime.now().isoformat()
 }
 
-# Cache for tracking sessions
 tracked_sessions = {}
 
 # ============================================================================
 # SIEM LOGGING
 # ============================================================================
 def log_to_siem(event_data):
-    """Send event to SIEM (Splunk)"""
+    """Invia evento al SIEM (Splunk)"""
     try:
         hec_url = f"https://{SPLUNK_HOST}:8088/services/collector/event"
         headers = {
@@ -74,71 +71,70 @@ def log_to_siem(event_data):
         logger.warning(f"Failed to log to SIEM: {e}")
 
 # ============================================================================
-# PCAP GENERATION
+# GENERAZIONE PCAP
 # ============================================================================
 def create_pcap_from_request(packet_data, pcap_path):
     """
-    Create a pcap file from HTTP request data using scapy.
-    This allows Snort to analyze the payload using its rules.
+    Crea un file pcap dai dati della richiesta HTTP usando scapy.
+    Questo permette a Snort di analizzare il payload usando le sue regole.
     """
     source_ip = packet_data.get('source_ip', '192.168.1.100')
     dest_ip = packet_data.get('dest_ip', '172.28.2.40')
     source_port = packet_data.get('source_port', 12345)
     dest_port = packet_data.get('dest_port', 80)
 
-    # Build HTTP request payload
+    # Costruisce payload richiesta HTTP
     method = packet_data.get('method', 'GET')
-    # Support both 'uri' and 'path' parameters
+ 
     uri = packet_data.get('uri') or packet_data.get('path', '/')
-    # Get user_agent from direct parameter or from headers
+    # Ottiene user_agent
     headers = packet_data.get('headers', {})
     user_agent = packet_data.get('user_agent') or headers.get('User-Agent', 'Mozilla/5.0')
-    # Support both 'payload' and 'body' parameters
+    
     payload_body = packet_data.get('payload') or packet_data.get('body', '')
 
-    # Construct HTTP request
+    # Costruisce richiesta HTTP
     http_request = f"{method} {uri} HTTP/1.1\r\n"
     http_request += f"Host: {dest_ip}\r\n"
     http_request += f"User-Agent: {user_agent}\r\n"
 
-    # Add other headers if present (headers already retrieved above)
+    # Aggiunge altri header presenti
     for key, value in headers.items():
         if key.lower() not in ['host', 'user-agent']:
             http_request += f"{key}: {value}\r\n"
 
     http_request += "\r\n"
 
-    # Add body if present
+    # Aggiunge corpo
     if payload_body:
         http_request += payload_body
 
-    # Create packet with scapy
-    # Ethernet + IP + TCP + HTTP payload
+    # Crea pacchetto
     packet = Ether()/IP(src=source_ip, dst=dest_ip)/TCP(sport=source_port, dport=dest_port, flags='PA')/Raw(load=http_request.encode())
 
-    # Write to pcap file
+    # Scrive su file pcap
     wrpcap(pcap_path, packet)
 
     return http_request
 
 # ============================================================================
-# SNORT ANALYSIS
+# ANALISI SNORT
 # ============================================================================
 def run_snort_analysis(pcap_path):
     """
-    Run Snort on a pcap file and parse the alerts.
-    Returns list of alerts found.
+    Esegue Snort su un file pcap e analizza gli alert.
+    Restituisce lista degli alert trovati.
     """
     alerts = []
     alert_file = tempfile.mktemp(suffix='.alert')
 
     try:
-        # Run Snort in read mode on the pcap file
-        # -r: read pcap file
-        # -c: config file
-        # -A: alert mode (fast)
-        # -l: log directory
-        # -q: quiet mode
+        # Esegue Snort in modalità lettura sul file pcap
+        # -r: legge file pcap
+        # -c: file config
+        # -A: modalità alert
+        # -l: directory log
+        # -q: modalità silenziosa
         cmd = [
             SNORT_BIN,
             '-r', pcap_path,
@@ -162,18 +158,17 @@ def run_snort_analysis(pcap_path):
         with stats_lock:
             stats['snort_invocations'] += 1
 
-        # Check for alerts in Snort output or alert file
-        # Snort outputs alerts to stdout in fast mode
+        # Controlla alert in output
         output = result.stdout + result.stderr
 
-        # Also check the alert file if it exists
+        # Controlla file alert
         if os.path.exists('/tmp/alert'):
             with open('/tmp/alert', 'r') as f:
                 output += f.read()
-            # Clear alert file for next run
+            # Pulisce file alert
             os.remove('/tmp/alert')
 
-        # Parse alerts from output
+        # Analizza alert dall'output
         alerts = parse_snort_alerts(output)
 
         logger.info(f"Snort analysis complete. Found {len(alerts)} alerts.")
@@ -187,12 +182,12 @@ def run_snort_analysis(pcap_path):
 
 def parse_snort_alerts(output):
     """
-    Parse Snort fast alert format output.
+    Analizza output formato fast alert di Snort.
     Format: MM/DD-HH:MM:SS.ssssss  [**] [1:SID:REV] MSG [**] [Classification: CLASS] [Priority: N] {PROTO} SRC -> DST
     """
     alerts = []
 
-    # Pattern for Snort fast alert format
+    # Formato fast alert
     alert_pattern = r'\[\*\*\]\s*\[(\d+):(\d+):(\d+)\]\s*([^\[]+)\s*\[\*\*\]'
     classification_pattern = r'\[Classification:\s*([^\]]+)\]'
     priority_pattern = r'\[Priority:\s*(\d+)\]'
@@ -204,15 +199,15 @@ def parse_snort_alerts(output):
                 gid, sid, rev = match.groups()[:3]
                 msg = match.group(4).strip()
 
-                # Extract classification
+                # Estrae classificazione
                 class_match = re.search(classification_pattern, line)
                 classification = class_match.group(1) if class_match else 'unknown'
 
-                # Extract priority
+                # Estrae priorita'
                 priority_match = re.search(priority_pattern, line)
                 priority = int(priority_match.group(1)) if priority_match else 3
 
-                # Determine severity based on priority
+                # Determina gravita' basata su priorita'
                 if priority == 1:
                     severity = 'critical'
                 elif priority == 2:
@@ -222,10 +217,10 @@ def parse_snort_alerts(output):
                 else:
                     severity = 'low'
 
-                # Determine action based on classification
+                # Determina azione basata su classificazione
                 action = 'block' if 'attack' in classification.lower() else 'alert'
 
-                # Extract rule ID from message (e.g., "SQLI-001 SQL Injection...")
+                # Estrae ID regola
                 rule_id_match = re.match(r'^([A-Z]+-\d+)', msg)
                 rule_id = rule_id_match.group(1) if rule_id_match else f"SID-{sid}"
 
@@ -256,18 +251,17 @@ def parse_snort_alerts(output):
 # ============================================================================
 def fallback_pattern_analysis(packet_data):
     """
-    Fallback pattern matching if Snort fails.
-    This ensures we always provide some level of detection.
+    Pattern matching di fallback se Snort fallisce
+    Assicura sempre un certo livello di rilevamento
     """
     alerts = []
 
-    # Combine all text fields for analysis
     payload = packet_data.get('payload', '')
     uri = packet_data.get('uri', '')
     user_agent = packet_data.get('user_agent', '')
     combined = f"{payload} {uri} {user_agent}".lower()
 
-    # Pattern definitions with severity
+    # Definizioni pattern con gravita'
     patterns = [
         ('SQLI-001', r'union\s+(all\s+)?select', 'SQL Injection - UNION SELECT', 'critical', 'block'),
         ('SQLI-002', r"'\s*(or|and)\s*'?\d+'?\s*=\s*'?\d+'?", 'SQL Injection - Boolean', 'critical', 'block'),
@@ -298,8 +292,8 @@ def fallback_pattern_analysis(packet_data):
 # ============================================================================
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
-    # Check if Snort is available
+    """Endpoint Health check"""
+    # Controlla disponibilita' Snort
     snort_available = os.path.exists(SNORT_BIN)
 
     return jsonify({
@@ -314,8 +308,8 @@ def health():
 @app.route('/analyze', methods=['POST'])
 def analyze():
     """
-    Main endpoint for packet analysis.
-    Receives packet data from PEP and returns alerts.
+    Endpoint principale per analisi pacchetti
+    Riceve dati pacchetto dal PEP e restituisce alert
     """
     try:
         packet_data = request.get_json()
@@ -330,18 +324,17 @@ def analyze():
 
         alerts = []
 
-        # Create temporary pcap file
         with tempfile.NamedTemporaryFile(suffix='.pcap', delete=False) as tmp:
             pcap_path = tmp.name
 
         try:
-            # Create pcap from request data
+            # Crea pcap dai dati della richiesta
             create_pcap_from_request(packet_data, pcap_path)
 
-            # Run Snort analysis
+            # Esegue analisi Snort
             alerts = run_snort_analysis(pcap_path)
 
-            # If Snort didn't find anything, try fallback
+            # Prova fallback se Snort non restituisce alert
             if not alerts:
                 fallback_alerts = fallback_pattern_analysis(packet_data)
                 if fallback_alerts:
@@ -349,14 +342,13 @@ def analyze():
                     logger.info(f"Fallback engine found {len(fallback_alerts)} alerts")
 
         finally:
-            # Clean up temp file
             if os.path.exists(pcap_path):
                 os.remove(pcap_path)
 
-        # Determine if traffic should be blocked
+        # Determina se il traffico deve essere bloccato
         blocked = any(a.get('action') == 'block' for a in alerts)
 
-        # Add source/dest info to alerts
+        # Aggiunge info su sorgente e destinazione agli alert
         for alert in alerts:
             alert['source_ip'] = source_ip
             alert['dest_ip'] = packet_data.get('dest_ip', 'unknown')
@@ -371,7 +363,7 @@ def analyze():
             'timestamp': datetime.now().isoformat()
         }
 
-        # Log to SIEM
+        # Log su Splunk
         log_to_siem({
             'type': 'ids_analysis',
             'source_ip': source_ip,
@@ -389,7 +381,7 @@ def analyze():
 
 @app.route('/rules', methods=['GET'])
 def get_rules():
-    """Return loaded rules information"""
+    """Restituisce informazioni su regole caricate"""
     rules = []
     rules_file = '/etc/snort/rules/local.rules'
 
@@ -398,7 +390,7 @@ def get_rules():
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#'):
-                    # Extract msg from rule
+                    # Estrae msg dalla regola
                     msg_match = re.search(r'msg:"([^"]+)"', line)
                     sid_match = re.search(r'sid:(\d+)', line)
                     if msg_match and sid_match:
@@ -415,7 +407,7 @@ def get_rules():
 
 @app.route('/stats', methods=['GET'])
 def get_stats():
-    """Return IDS statistics"""
+    """Restituisce statistiche IDS"""
     with stats_lock:
         return jsonify({
             **stats,
@@ -425,7 +417,7 @@ def get_stats():
 
 @app.route('/test-attack', methods=['POST'])
 def test_attack():
-    """Test endpoint with sample attack payloads"""
+    """Endpoint di test"""
     attack_type = request.json.get('type', 'sqli') if request.json else 'sqli'
 
     test_payloads = {
@@ -461,7 +453,7 @@ def test_attack():
 
     test_data = test_payloads.get(attack_type, test_payloads['sqli'])
 
-    # Run analysis on test payload
+    # Esegue analisi su payload di test
     with tempfile.NamedTemporaryFile(suffix='.pcap', delete=False) as tmp:
         pcap_path = tmp.name
 
@@ -495,7 +487,6 @@ if __name__ == '__main__':
     logger.info(f"Mode: {IDS_MODE}")
     logger.info(f"SIEM: {SPLUNK_HOST}")
 
-    # Check if Snort is available
     if os.path.exists(SNORT_BIN):
         logger.info("Snort engine: AVAILABLE")
     else:

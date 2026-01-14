@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# SNORT IDS ENTRYPOINT
+# ENTRYPOINT SNORT IDS
 # TechCorp Zero Trust Architecture - Intrusion Detection System
 # ============================================================================
 
@@ -11,7 +11,7 @@ echo " SNORT IDS - Intrusion Detection System"
 echo " TechCorp Zero Trust Architecture"
 echo "=============================================="
 
-# Configuration
+# Configurazione
 API_PORT="${API_PORT:-9090}"
 SNORT_CONF="/etc/snort/snort.conf"
 RULES_FILE="/etc/snort/rules/local.rules"
@@ -23,7 +23,7 @@ echo "    Rules: ${RULES_FILE}"
 echo ""
 
 # ----------------------------------------------------------------------------
-# Verify Snort installation
+# Verifica installazione Snort
 # ----------------------------------------------------------------------------
 echo "[1/5] Verifying Snort installation..."
 if command -v snort &> /dev/null; then
@@ -35,7 +35,7 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-# Verify configuration files
+# Verifica file di configurazione
 # ----------------------------------------------------------------------------
 echo "[2/5] Verifying configuration files..."
 
@@ -55,7 +55,7 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-# Create required directories
+# Creazione directory richieste
 # ----------------------------------------------------------------------------
 echo "[3/5] Creating required directories..."
 mkdir -p /var/log/snort
@@ -65,11 +65,9 @@ chmod 755 /var/log/snort /var/run/snort /tmp/snort_pcaps
 echo "      Directories created"
 
 # ----------------------------------------------------------------------------
-# Test Snort configuration (optional - may fail without full rules)
+# Test configurazione Snort
 # ----------------------------------------------------------------------------
 echo "[4/5] Testing Snort configuration..."
-# Note: We do a quick validation, but some warnings are expected
-# since we're using a minimal configuration
 if snort -T -c "${SNORT_CONF}" 2>&1 | grep -q "Snort successfully validated"; then
     echo "      Configuration validated successfully"
 else
@@ -78,7 +76,7 @@ else
 fi
 
 # ----------------------------------------------------------------------------
-# Display loaded rules summary
+# Riepilogo regole caricate
 # ----------------------------------------------------------------------------
 echo "[5/5] Rules summary:"
 echo "      SQL Injection rules: $(grep -c 'SQLI-' ${RULES_FILE} 2>/dev/null || echo 0)"
@@ -97,6 +95,6 @@ echo "=============================================="
 echo ""
 
 # ----------------------------------------------------------------------------
-# Start the Python API wrapper
+# Avvio wrapper API Python
 # ----------------------------------------------------------------------------
 exec python3 /app/snort_api.py

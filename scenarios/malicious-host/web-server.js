@@ -1,7 +1,6 @@
 /**
- * MALICIOUS HOST - ISOLATED
- * Questo host è completamente isolato dalla rete Zero Trust
- * Mostra SOLO una pagina di blocco
+ * HOST MALEVOLO
+ * Isolato dalla rete Zero Trust
  */
 
 const express = require('express');
@@ -9,13 +8,13 @@ const app = express();
 const PORT = 8080;
 const HOST_IP = process.env.HOST_IP || '172.28.1.250';
 
-// Log all attempts
+// Logga tutti i tentativi
 app.use((req, res, next) => {
-    console.log(`[MALICIOUS-HOST] ⚠️ BLOCKED ACCESS ATTEMPT: ${req.method} ${req.path} from ${req.ip}`);
+    console.log(`[MALICIOUS-HOST] ⚠️ TENTATIVO ACCESSO BLOCCATO: ${req.method} ${req.path} da ${req.ip}`);
     next();
 });
 
-// ALL routes show blocked page
+// Pagina blocco
 app.use('*', (req, res) => {
     res.status(403).send(`<!DOCTYPE html>
 <html lang="it">
@@ -209,10 +208,10 @@ app.use('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log('============================================');
-    console.log('[MALICIOUS-HOST] ⚠️ ISOLATED HOST ACTIVE');
+    console.log('[MALICIOUS-HOST] ⚠️ HOST ISOLATO ATTIVO');
     console.log(`   IP: ${HOST_IP}`);
-    console.log(`   Port: ${PORT}`);
-    console.log('   Status: NETWORK ISOLATED');
-    console.log('   Access: ALL BLOCKED');
+    console.log(`   Porta: ${PORT}`);
+    console.log('   Stato: RETE ISOLATA');
+    console.log('   Accesso: BLOCCATO');
     console.log('============================================');
 });

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Blocked server
+# Server bloccato
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 from datetime import datetime

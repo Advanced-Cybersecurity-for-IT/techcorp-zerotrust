@@ -108,13 +108,12 @@ app.get('/dashboard', async (req, res) => {
     res.send(await getDashboardPage(req.cookies.access_token, req.cookies.username, req.cookies.user_fullname));
 });
 
-// External browser page
 app.get('/browser', (req, res) => {
     if (!req.cookies.access_token) return res.redirect('/intranet');
     res.send(getExternalBrowserPage());
 });
 
-// Proxy to external servers - Simulates Squid Proxy behavior
+// Proxy verso server esterni
 app.get('/browse-external', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) {
@@ -123,7 +122,7 @@ app.get('/browse-external', async (req, res) => {
     
     console.log(`[${SCENARIO_NAME}] External browse request to: ${targetUrl}`);
     
-    // BLACKLIST - Sites blocked by Squid ACL
+    // BLACKLIST - Siti bloccati da ACL Squid
     const BLACKLIST = [
         'malware-download.net',
         'phishing-site.com', 
@@ -135,7 +134,6 @@ app.get('/browse-external', async (req, res) => {
         '172.28.1.250'
     ];
     
-    // Check if URL is blocked
     const isBlocked = BLACKLIST.some(domain => targetUrl.toLowerCase().includes(domain));
     
     if (isBlocked) {
@@ -143,7 +141,7 @@ app.get('/browse-external', async (req, res) => {
         return res.send(getSquidBlockedPage(targetUrl));
     }
     
-    // WHITELIST - Known partner sites (render custom pages)
+    // WHITELIST
     if (targetUrl.includes('logisticaitalia.com') || targetUrl.includes('external-allowed-server') || targetUrl.includes('172.28.1.50')) {
         return res.send(getPartnerSitePage());
     }
@@ -152,7 +150,6 @@ app.get('/browse-external', async (req, res) => {
         return res.send(getCloudServiziPage());
     }
     
-    // For other URLs, try to fetch or show not found
     try {
         const response = await fetch(targetUrl, { timeout: 5000 });
         const html = await response.text();
@@ -867,7 +864,6 @@ function getExternalBrowserPage() {
             document.getElementById('status-text').textContent = 'Caricamento: ' + url;
             document.getElementById('tab-title').textContent = url.replace('https://', '').replace('http://', '').split('/')[0];
             
-            // Show loading
             document.getElementById('start-page').style.display = 'none';
             document.getElementById('result-frame').style.display = 'block';
             document.getElementById('back-home').style.display = 'block';
@@ -880,7 +876,6 @@ function getExternalBrowserPage() {
                     document.getElementById('result-frame').srcdoc = html;
                     document.getElementById('status-text').textContent = 'Completato';
                     
-                    // Update history
                     history.push(url);
                     historyIndex = history.length - 1;
                 })

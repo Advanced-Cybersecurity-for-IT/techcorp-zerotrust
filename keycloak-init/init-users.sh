@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
-# Keycloak User Initialization Script
-# Sets passwords for all users after Keycloak starts
+# Script di Inizializzazione Utenti Keycloak
+# Imposta le password per tutti gli utenti dopo l'avvio di Keycloak
 # ============================================================================
 
 set -e
@@ -11,7 +11,6 @@ ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-TechCorp2024!}"
 REALM="techcorp"
 
-# Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -22,7 +21,7 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # ============================================================================
-# User credentials to set
+# Credenziali utente
 # ============================================================================
 declare -A USERS
 USERS["m.rossi"]="Ceo2024!"
@@ -33,7 +32,7 @@ USERS["f.colombo"]="Dev2024!"
 USERS["s.ricci"]="Analyst2024!"
 
 # ============================================================================
-# Wait for Keycloak to be ready
+# Attesa Keycloak
 # ============================================================================
 wait_for_keycloak() {
     log_info "Waiting for Keycloak to be ready at ${KEYCLOAK_URL}..."
@@ -42,7 +41,7 @@ wait_for_keycloak() {
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        # Check if the master realm endpoint responds (reliable indicator)
+        # Controlla se l'endpoint del realm risponde
         if curl -s -f "${KEYCLOAK_URL}/realms/master" > /dev/null 2>&1; then
             log_info "Keycloak is ready!"
             return 0
@@ -58,7 +57,7 @@ wait_for_keycloak() {
 }
 
 # ============================================================================
-# Get admin access token
+# Get token di accesso per l'admin
 # ============================================================================
 get_admin_token() {
     log_info "Getting admin access token..."
@@ -84,7 +83,7 @@ get_admin_token() {
 }
 
 # ============================================================================
-# Get user ID by username
+# Get ID utente da username
 # ============================================================================
 get_user_id() {
     local username="$1"
@@ -93,7 +92,7 @@ get_user_id() {
     response=$(curl -s -X GET "${KEYCLOAK_URL}/admin/realms/${REALM}/users?username=${username}&exact=true" \
         -H "Authorization: Bearer ${ADMIN_TOKEN}")
 
-    # Extract user ID from response
+    # Lettrua ID utente
     local user_id
     user_id=$(echo "$response" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
 
@@ -101,7 +100,7 @@ get_user_id() {
 }
 
 # ============================================================================
-# Set user password
+# Set password utente
 # ============================================================================
 set_user_password() {
     local user_id="$1"
@@ -128,17 +127,14 @@ set_user_password() {
 # ============================================================================
 main() {
     echo "============================================"
-    echo "Keycloak User Initialization"
+    echo "Inizializzazione Utenti Keycloak"
     echo "============================================"
     echo ""
-
-    # Wait for Keycloak
+k
     wait_for_keycloak || exit 1
 
-    # Small additional delay to ensure realm is fully loaded
     sleep 5
 
-    # Get admin token
     get_admin_token || exit 1
 
     echo ""
@@ -151,7 +147,6 @@ main() {
     for username in "${!USERS[@]}"; do
         password="${USERS[$username]}"
 
-        # Get user ID
         user_id=$(get_user_id "$username")
 
         if [ -z "$user_id" ]; then
@@ -160,7 +155,6 @@ main() {
             continue
         fi
 
-        # Set password
         if set_user_password "$user_id" "$password"; then
             log_info "Password set for user: $username"
             success_count=$((success_count + 1))

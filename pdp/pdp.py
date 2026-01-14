@@ -5,7 +5,7 @@ Zero Trust Architecture - TechCorp
 ============================================================================
 Il PDP valuta le richieste di accesso basandosi su:
 1. Policy statiche (ACL, ruoli)
-2. History dal SIEM (Splunk) per calcolo Trust Score dinamico
+2. Storico dal SIEM (Splunk) per calcolo Trust Score dinamico
 3. Contesto della richiesta (IP, tempo, risorsa)
 ============================================================================
 """
@@ -33,21 +33,21 @@ SPLUNK_PASSWORD = os.environ.get('SPLUNK_PASSWORD', 'TechCorp2024!')
 SPLUNK_HEC_TOKEN = os.environ.get('SPLUNK_HEC_TOKEN', 'techcorp-hec-token-2024')
 
 # ============================================================================
-# POLICY DEFINITIONS
+# DEFINIZIONE POLICY
 # ============================================================================
 POLICIES = {
     "ip_whitelist": [
-        "172.28.1.100",      # External Allowed Host
-        "172.28.1.50",       # External Allowed Server
-        "172.28.4.0/24",     # Production Network
-        "172.28.5.0/24",     # Development Network
-        "172.28.2.0/24",     # Internal Network
-        "172.28.3.0/24",     # DMZ Network
+        "172.28.1.100",      # Host esterno autorizzato
+        "172.28.1.50",       # Server esterno autorizzato
+        "172.28.4.0/24",     # Rete di produzione (Production)
+        "172.28.5.0/24",     # Rete di sviluppo (Development)
+        "172.28.2.0/24",     # Rete interna
+        "172.28.3.0/24",     # Rete DMZ
     ],
     "ip_blacklist": [
-        "172.28.1.200",      # External Blocked Host
-        "172.28.1.250",      # Malicious Host
-        "172.28.1.60",       # Blocked Server
+        "172.28.1.200",      # Host esterno bloccato
+        "172.28.1.250",      # Host malevolo
+        "172.28.1.60",       # Server bloccato
     ],
     "roles_permissions": {
         "ceo": {"read": True, "write": True, "delete": True, "admin": True},
@@ -78,7 +78,7 @@ POLICIES = {
 }
 
 # ============================================================================
-# SIEM CLIENT - Interroga Splunk per la History
+# CLIENT SIEM - Interroga Splunk per lo storico degli eventi
 # ============================================================================
 class SIEMClient:
     def __init__(self):
@@ -88,7 +88,7 @@ class SIEMClient:
         self.session.auth = (SPLUNK_USER, SPLUNK_PASSWORD)
     
     def query_user_history(self, username, hours=24):
-        """Interroga SIEM per la history dell'utente"""
+        """Interroga il SIEM per ottenere lo storico dell'utente"""
         try:
             search_query = f'search index=zerotrust username="{username}" earliest=-{hours}h'
             response = self.session.post(
@@ -129,7 +129,7 @@ class SIEMClient:
             return 0
     
     def log_decision(self, decision_data):
-        """Invia decisione al SIEM per logging"""
+        """Invia la decisione al SIEM per il logging"""
         try:
             hec_url = f"https://{SPLUNK_HOST}:8088/services/collector/event"
             headers = {
@@ -148,7 +148,7 @@ class SIEMClient:
 siem_client = SIEMClient()
 
 # ============================================================================
-# TRUST SCORE CALCULATOR
+# CALCOLO TRUST SCORE
 # ============================================================================
 def calculate_trust_score(username, source_ip, user_roles, context):
     """
@@ -254,22 +254,22 @@ def calculate_trust_score(username, source_ip, user_roles, context):
     return round(final_score, 2), components
 
 # ============================================================================
-# POLICY EVALUATION
+# VALUTAZIONE POLICY
 # ============================================================================
 def evaluate_request(request_data):
     """
     Valuta una richiesta di accesso secondo le policy Zero Trust
 
-    Supports both nested and flat input formats:
+    Formati di input supportati:
 
-    Nested format: {
+    {
         "subject": {"username": "...", "roles": [...], "token": "..."},
         "device": {"ip": "...", "hostname": "...", "network": "..."},
         "resource": {"type": "...", "action": "...", "path": "..."},
         "context": {"timestamp": "...", "user_agent": "..."}
     }
 
-    Flat format: {
+    {
         "username": "...",
         "user_roles": [...],
         "source_ip": "...",
@@ -286,9 +286,7 @@ def evaluate_request(request_data):
     }
     """
 
-    # Support both nested and flat input formats
     if 'subject' in request_data and isinstance(request_data.get('subject'), dict):
-        # Nested format
         subject = request_data.get('subject', {})
         device = request_data.get('device', {})
         resource_data = request_data.get('resource', {})
@@ -300,7 +298,6 @@ def evaluate_request(request_data):
         resource_type = resource_data.get('type', 'unknown') if isinstance(resource_data, dict) else str(resource_data)
         action = resource_data.get('action', 'read') if isinstance(resource_data, dict) else 'read'
     else:
-        # Flat format
         username = request_data.get('username', 'anonymous')
         user_roles = request_data.get('user_roles', request_data.get('roles', []))
         source_ip = request_data.get('source_ip', request_data.get('ip', 'unknown'))
@@ -311,7 +308,7 @@ def evaluate_request(request_data):
     logger.info(f"Evaluating request: user={username}, ip={source_ip}, resource={resource_type}, action={action}")
     
     # -------------------------------------------------------------------------
-    # CHECK 1: IP Blacklist (Immediate Deny)
+    # CHECK: Blacklist IP
     # -------------------------------------------------------------------------
     if source_ip in POLICIES['ip_blacklist']:
         decision = {
@@ -324,12 +321,12 @@ def evaluate_request(request_data):
         return decision
     
     # -------------------------------------------------------------------------
-    # CHECK 2: Calculate Trust Score
+    # CHECK: Calcolo Trust Score
     # -------------------------------------------------------------------------
     trust_score, components = calculate_trust_score(username, source_ip, user_roles, context)
     
     # -------------------------------------------------------------------------
-    # CHECK 3: Minimum Trust for Resource
+    # CHECK: Trust Score Minimo per Risorsa
     # -------------------------------------------------------------------------
     resource_policy = POLICIES['resource_access'].get(resource_type, {"min_trust": 60, "roles": []})
     min_trust = resource_policy['min_trust']
@@ -346,7 +343,7 @@ def evaluate_request(request_data):
         return decision
     
     # -------------------------------------------------------------------------
-    # CHECK 4: Role-based Access
+    # CHECK: Accesso Basato su Ruoli (RBAC)
     # -------------------------------------------------------------------------
     if allowed_roles and not any(r in allowed_roles for r in user_roles):
         decision = {
@@ -359,14 +356,14 @@ def evaluate_request(request_data):
         return decision
     
     # -------------------------------------------------------------------------
-    # CHECK 5: Action Permission
+    # CHECK: Permesso per Azione
     # -------------------------------------------------------------------------
     for role in user_roles:
         role_perms = POLICIES['roles_permissions'].get(role, {})
         if role_perms.get(action, False):
             break
     else:
-        if user_roles:  # Ha ruoli ma nessuno permette l'azione
+        if user_roles:  # Il ruolo non permette l'azione
             decision = {
                 "decision": "deny",
                 "trust_score": trust_score,
