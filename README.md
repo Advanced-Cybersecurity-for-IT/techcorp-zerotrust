@@ -680,25 +680,97 @@ curl -X GET http://pep:8080/api/db/audit \
 
 ### 6.4 Video Demo degli Scenari di Test
 
-Nella cartella `resources/` sono disponibili video dimostrativi che illustrano il funzionamento dell'architettura Zero Trust in scenari reali. Questi video mostrano l'intero flusso di comunicazione tra i vari componenti del sistema.
+Di seguito sono presentati i video dimostrativi che illustrano il funzionamento dell'architettura Zero Trust in scenari reali.
 
-| Video | Descrizione | Scenario Dimostrato |
-|-------|-------------|---------------------|
-| 📹 `Rete-Interna->DBMS.mp4` | Accesso dalla rete interna al database | Dimostra un utente autorizzato dalla rete interna (development/production) che accede al database PostgreSQL attraverso il PEP. Il video mostra il calcolo del Trust Score, la validazione JWT, e l'autorizzazione concessa dal PDP. |
-| 📹 `Rete-Esterna->DBMS.mp4` | Tentativo di accesso dalla rete esterna al database | Illustra come il sistema gestisce i tentativi di accesso al database da reti esterne. Il video evidenzia i controlli di sicurezza attivati: verifica firewall iptables, policy di Squid, e decisioni del PDP che tengono conto della rete di provenienza nel calcolo del Trust Score. |
-| 📹 `Rete-Interna->Rete-Esterna.mp4` | Comunicazione dalla rete interna verso l'esterno | Mostra il comportamento del sistema quando un host interno tenta di comunicare con server esterni. Il video dimostra il filtraggio Layer 7 di Squid, il blocco di domini nella blacklist, e il logging degli eventi nel SIEM Splunk. |
+---
 
-#### Come Visualizzare i Video
+#### 📹 Scenario 1: Accesso dalla Rete Interna al Database
 
-I video sono in formato MP4 e possono essere riprodotti con qualsiasi player multimediale standard. Si trovano nella directory:
+<video src="resources/Rete-Interna->DBMS.mp4" controls width="100%"></video>
 
-```
-techcorp-zerotrust/
-└── resources/
-    ├── Rete-Interna->DBMS.mp4
-    ├── Rete-Esterna->DBMS.mp4
-    └── Rete-Interna->Rete-Esterna.mp4
-```
+**Cosa succede in questo video:**
+
+1. **Autenticazione iniziale**: Un utente dalla rete interna (development o production) effettua una richiesta al PEP (Policy Enforcement Point) includendo il proprio token JWT ottenuto da Keycloak.
+
+2. **Validazione del token**: Il PEP verifica la validità del token JWT consultando il JWKS endpoint di Keycloak, estraendo le informazioni sull'utente (username, ruolo, preferred_username).
+
+3. **Richiesta al PDP**: Il PEP inoltra la richiesta al Policy Decision Point con tutti i parametri contestuali: IP sorgente, risorsa richiesta, azione (GET/POST/DELETE), e informazioni utente.
+
+4. **Calcolo del Trust Score**: Il PDP calcola dinamicamente il Trust Score considerando:
+   - **Role Score (30%)**: Punteggio basato sul ruolo dell'utente (CEO=100, Developer=70, ecc.)
+   - **History Score (25%)**: Percentuale di accessi passati riusciti consultando Splunk
+   - **Anomaly Score (25%)**: Presenza di alert IDS recenti associati all'utente
+   - **Context Score (20%)**: Bonus per rete interna (+20), orario lavorativo (+20)
+
+5. **Decisione e accesso**: Con un Trust Score elevato (~75-85 per un developer interno), il PDP autorizza l'accesso. Il PEP inoltra la richiesta al database PostgreSQL e restituisce i dati all'utente.
+
+6. **Logging**: Tutti gli eventi vengono inviati a Splunk per analisi storica e audit.
+
+---
+
+#### 📹 Scenario 2: Tentativo di Accesso dalla Rete Esterna al Database
+
+<video src="resources/Rete-Esterna->DBMS.mp4" controls width="100%"></video>
+
+**Cosa succede in questo video:**
+
+1. **Richiesta da rete esterna**: Un host situato nella rete esterna (external-zone, 172.28.4.0/24) tenta di accedere al database aziendale attraverso il PEP.
+
+2. **Controllo firewall Layer 3**: La richiesta attraversa prima il firewall iptables che verifica:
+   - Se l'IP sorgente è nella blacklist (172.28.1.200, 172.28.4.200)
+   - Se la comunicazione tra le zone di rete è permessa
+   - Applicazione delle regole di filtraggio configurate
+
+3. **Ispezione Snort IDS**: Il traffico viene analizzato da Snort che cerca pattern sospetti:
+   - Tentativi di SQL Injection
+   - Attacchi XSS
+   - Path Traversal
+   - Altre 36 regole custom definite in `local.rules`
+
+4. **Valutazione PDP con penalità**: Il PDP riceve la richiesta e calcola il Trust Score con penalità per la rete esterna:
+   - **Context Score ridotto**: La provenienza dalla rete esterna comporta un malus (-10 punti)
+   - **Trust Score finale più basso**: Tipicamente 50-65 per utenti esterni
+
+5. **Possibili esiti**:
+   - **Accesso limitato**: Se il Trust Score è tra 40-59, l'utente può accedere solo a risorse a bassa sensibilità (stats, departments)
+   - **Accesso negato**: Se il Trust Score scende sotto 40 o la risorsa richiede privilegi elevati, il PDP nega l'accesso con codice 403
+
+6. **Alert e monitoring**: Ogni tentativo viene loggato in Splunk con dettagli sulla decisione, permettendo analisi di pattern sospetti.
+
+---
+
+#### 📹 Scenario 3: Comunicazione dalla Rete Interna verso la Rete Esterna
+
+<video src="resources/Rete-Interna->Rete-Esterna.mp4" controls width="100%"></video>
+
+**Cosa succede in questo video:**
+
+1. **Richiesta outbound**: Un host dalla rete interna (development o production) tenta di comunicare con un server esterno, ad esempio per scaricare risorse o contattare API esterne.
+
+2. **Proxy Squid (Layer 7)**: Tutto il traffico HTTP/HTTPS in uscita passa attraverso il proxy Squid che opera a livello applicativo:
+   - **Verifica dominio**: Squid controlla se il dominio di destinazione è nella blacklist (`blocked_domains.txt`)
+   - **Domini bloccati**: malware.com, phishing-site.com, blocked-external.com, ecc.
+   - **Pattern matching**: Ricerca di URL sospetti o tentativi di esfiltrazione dati
+
+3. **Scenari di blocco**:
+   - **Dominio in blacklist**: Squid restituisce HTTP 403 Forbidden e logga l'evento
+   - **Pattern malevolo rilevato**: La richiesta viene bloccata e segnalata
+
+4. **Scenari di autorizzazione**:
+   - **Dominio consentito**: La richiesta viene inoltrata al server esterno (es. allowed-external.com)
+   - **Risposta proxy**: Squid riceve la risposta e la inoltra al client interno
+
+5. **Logging centralizzato in Splunk**: 
+   - Ogni richiesta (permessa o bloccata) viene registrata
+   - I log includono: timestamp, IP sorgente, dominio destinazione, esito, user-agent
+   - Dashboard Splunk permettono di visualizzare pattern di traffico e anomalie
+
+6. **Integrazione con il sistema Zero Trust**: Anche se la comunicazione è outbound, il sistema mantiene visibilità completa sulle attività di rete, permettendo di identificare:
+   - Host compromessi che tentano comunicazioni con C&C server
+   - Tentativi di data exfiltration
+   - Violazioni delle policy aziendali sull'uso di internet
+
+---
 
 > **Nota:** I video sono stati registrati durante sessioni di test reali del sistema e mostrano output autentici dei vari componenti (PDP, PEP, Snort IDS, Splunk).
 
