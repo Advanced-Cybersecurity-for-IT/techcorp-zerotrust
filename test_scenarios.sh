@@ -203,7 +203,7 @@ CEO_TOKEN=$(get_token "m.rossi" "Ceo2024!")
 DEV_TOKEN=$(get_token "f.colombo" "Dev2024!")
 ANALYST_TOKEN=$(get_token "s.ricci" "Analyst2024!")
 
-# CEO dalla rete Production (atteso: >= 75, il piu' alto possibile)
+# CEO dalla rete Production
 # NOTA: Il trust score varia dinamicamente in base agli eventi di sicurezza recenti
 print_test "Trust Score: CEO dalla rete Production (172.28.4.10)"
 cmd="curl -s -X POST ${PDP}/trust-score -H 'Content-Type: application/json' -d '{\"username\":\"m.rossi\",\"source_ip\":\"172.28.4.10\",\"roles\":[\"ceo\"]}'"
@@ -320,7 +320,7 @@ else
 fi
 
 # A5: Sales Manager accede a customers (atteso PERMESSO)
-print_test "RBAC A5: Sales Manager accede a customers (autorizzato)"
+print_test "RBAC A5: Sales Manager accede a customers (autorizzato, ma può fallire dopo il test precedente B5)"
 cmd="curl -s ${PEP}/api/db/customers -H 'Authorization: Bearer <SALES_TOKEN>' -H 'X-Real-IP: 172.28.2.30'"
 print_cmd "$cmd"
 result=$(curl -s "${PEP}/api/db/customers" \
@@ -362,7 +362,7 @@ else
 fi
 
 # A9: Analyst accede a customers (dipende dal trust score dinamico)
-print_test "RBAC A9: Analyst accede a customers (richiede trust >= 60)"
+print_test "RBAC A9: Analyst accede a customers (richiede trust >= 60). La regola Snort EXFIL-001 potrebbe bloccare la richiesta"
 cmd="curl -s ${PEP}/api/db/customers -H 'Authorization: Bearer <ANALYST_TOKEN>' -H 'X-Real-IP: 172.28.2.30'"
 print_cmd "$cmd"
 result=$(curl -s "${PEP}/api/db/customers" \

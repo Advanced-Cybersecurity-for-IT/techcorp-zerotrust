@@ -130,7 +130,7 @@ main() {
     echo "Inizializzazione Utenti Keycloak"
     echo "============================================"
     echo ""
-k
+
     wait_for_keycloak || exit 1
 
     sleep 5
